@@ -1,0 +1,22 @@
+:root { font-family: system-ui, sans-serif; color: #1f2933; background: #f5f7fa; }
+body { margin: 0; }
+a { color: #3b5bdb; }
+.navbar { display: flex; align-items: center; gap: 2rem; padding: 0.75rem 1.5rem; background: #1f2933; color: #fff; }
+.navbar .brand { font-weight: 700; }
+.navbar nav { display: flex; gap: 1rem; }
+.navbar a { color: #cbd2d9; text-decoration: none; }
+.navbar a.active { color: #fff; font-weight: 600; }
+.container { max-width: 960px; margin: 0 auto; padding: 1.5rem 16px; }
+.page-header { display: flex; justify-content: space-between; align-items: center; }
+.button, button { background: #3b5bdb; color: #fff; border: 0; border-radius: 6px; padding: 0.5rem 1rem; text-decoration: none; cursor: pointer; font: inherit; }
+button:disabled { opacity: 0.6; cursor: default; }
+.table { width: 100%; border-collapse: collapse; background: #fff; }
+.table th, .table td { text-align: left; padding: 0.6rem; border-bottom: 1px solid #e4e7eb; }
+.form { display: flex; flex-direction: column; gap: 1rem; max-width: 420px; }
+.form label { display: flex; flex-direction: column; gap: 0.3rem; font-weight: 600; }
+.form input, .form select { font: inherit; padding: 0.45rem; border: 1px solid #cbd2d9; border-radius: 6px; font-weight: 400; }
+.field-error { color: #c92a2a; font-size: 0.85rem; font-weight: 400; }
+.error { background: #fff5f5; color: #c92a2a; border: 1px solid #ffc9c9; padding: 0.6rem; border-radius: 6px; margin-bottom: 1rem; }
+.details { display: grid; grid-template-columns: max-content 1fr; gap: 0.5rem 1.5rem; background: #fff; padding: 1rem; border-radius: 6px; }
+.details dt { font-weight: 600; }
+.details dd { margin: 0; }
