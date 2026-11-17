@@ -1,4 +1,5 @@
 """Loads a store's .sql files into a {name: query} dict, once at import time."""
+
 from pathlib import Path
 
 

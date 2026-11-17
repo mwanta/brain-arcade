@@ -3,3 +3,4 @@ PyMySQL==1.1.1
 cryptography==43.0.3  # required by PyMySQL for MySQL 8 caching_sha2_password auth
 python-dotenv==1.0.1
 pytest==8.3.3
+ruff==0.8.4

@@ -1,12 +1,21 @@
 """App entry point: wires Database -> Repository (stores) -> handlers -> routes."""
+
 from flask import Flask, jsonify
 
 from internal.config import Config
 from internal.data.database import Database
 from internal.data.repository import Repository
 from internal.errors import AppError
-from internal.handlers.user_handler import UserHandler
-from internal.routes.user_routes import create_user_routes
+from internal.handlers.catalog_handler import CatalogHandler
+from internal.handlers.game_play_handler import GamePlayHandler
+from internal.handlers.player_handler import PlayerHandler
+from internal.handlers.session_handler import SessionHandler
+from internal.handlers.stats_handler import StatsHandler
+from internal.routes.catalog_routes import create_catalog_routes
+from internal.routes.game_play_routes import create_game_play_routes
+from internal.routes.player_routes import create_player_routes
+from internal.routes.session_routes import create_session_routes
+from internal.routes.stats_routes import create_stats_routes
 
 
 def create_app(config=None, repo=None):
@@ -30,7 +39,11 @@ def create_app(config=None, repo=None):
 
 def register_routes(app, repo):
     """Builds each handler from the repo and mounts its routes."""
-    app.register_blueprint(create_user_routes(UserHandler(repo)))
+    app.register_blueprint(create_player_routes(PlayerHandler(repo)))
+    app.register_blueprint(create_catalog_routes(CatalogHandler(repo)))
+    app.register_blueprint(create_session_routes(SessionHandler(repo)))
+    app.register_blueprint(create_game_play_routes(GamePlayHandler(repo)))
+    app.register_blueprint(create_stats_routes(StatsHandler(repo)))
 
 
 if __name__ == "__main__":

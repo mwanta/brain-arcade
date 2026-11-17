@@ -1,4 +1,5 @@
 """Connection management for MySQL. Shared by all stores."""
+
 from contextlib import contextmanager
 
 import pymysql
