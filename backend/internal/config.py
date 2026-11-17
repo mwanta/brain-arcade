@@ -1,4 +1,5 @@
 """Loads configuration from environment variables (backend/.env)."""
+
 import os
 from dataclasses import dataclass
 

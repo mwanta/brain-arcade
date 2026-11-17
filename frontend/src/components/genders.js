@@ -7,5 +7,4 @@ export const GENDER_OPTIONS = [
   { value: 'prefer_not_to_say', label: 'Prefer not to say' },
 ];
 
-export const genderLabel = (value) =>
-  GENDER_OPTIONS.find((g) => g.value === value)?.label ?? '—';
+export const genderLabel = (value) => GENDER_OPTIONS.find((g) => g.value === value)?.label ?? '—';

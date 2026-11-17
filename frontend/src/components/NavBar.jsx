@@ -5,8 +5,10 @@ export default function NavBar() {
     <header className="navbar">
       <span className="brand">Brain Arcade</span>
       <nav>
-        <NavLink to="/users" end>Users</NavLink>
-        <NavLink to="/users/new">New user</NavLink>
+        <NavLink to="/players" end>
+          Players
+        </NavLink>
+        <NavLink to="/players/new">New player</NavLink>
       </nav>
     </header>
   );
