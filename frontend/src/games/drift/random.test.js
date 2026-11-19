@@ -54,4 +54,24 @@ describe('createRng', () => {
   it('pick throws on an empty array', () => {
     expect(() => createRng(5).pick([])).toThrow();
   });
+
+  it('shuffle keeps the same elements and does not mutate its input', () => {
+    const rng = createRng(11);
+    const input = [1, 2, 3, 4, 5, 6];
+    const copy = [...input];
+    for (let i = 0; i < 100; i++) {
+      const out = rng.shuffle(input);
+      expect(out).not.toBe(input);
+      expect([...out].sort()).toEqual(copy);
+      expect(input).toEqual(copy);
+    }
+  });
+
+  it('shuffle actually reorders and handles empty arrays', () => {
+    const rng = createRng(3);
+    const orders = new Set();
+    for (let i = 0; i < 50; i++) orders.add(rng.shuffle([1, 2, 3]).join());
+    expect(orders.size).toBeGreaterThan(1);
+    expect(rng.shuffle([])).toEqual([]);
+  });
 });

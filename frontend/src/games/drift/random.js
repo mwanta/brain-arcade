@@ -11,11 +11,13 @@
  *   int: (min: number, max: number) => number,
  *   chance: (p: number) => boolean,
  *   pick: <T>(array: T[]) => T,
+ *   shuffle: <T>(array: T[]) => T[],
  * }}
  *   - next(): float in [0, 1)
  *   - int(min, max): integer in [min, max], inclusive
  *   - chance(p): true with probability p (p <= 0 never, p >= 1 always)
  *   - pick(array): random element; throws on an empty array
+ *   - shuffle(array): new array in random order (Fisher-Yates); input is not mutated
  */
 export function createRng(seed) {
   let state = seed >>> 0;
@@ -43,5 +45,14 @@ export function createRng(seed) {
     return array[int(0, array.length - 1)];
   }
 
-  return { next, int, chance, pick };
+  function shuffle(array) {
+    const copy = [...array];
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = int(0, i);
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  }
+
+  return { next, int, chance, pick, shuffle };
 }
