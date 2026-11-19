@@ -39,6 +39,7 @@ frontend/src/
 4. **Frontend** (port 5173, proxies `/api` to the backend):
    ```
    cd frontend && npm install && npm run dev
+   cd frontend && npm test         # unit tests (Jest)
    ```
 
 5. **Formatting:** `make format` fixes formatting (ruff for Python, Prettier for the frontend). `make format-check` only reports, and CI runs it.

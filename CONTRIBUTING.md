@@ -53,8 +53,9 @@ The example uses a hypothetical `badge` table.
 
 Run `make format` from the repo root first. It formats Python with ruff and the frontend with Prettier, and fixes import order.
 
-CI (`.github/workflows/ci.yml`) runs on every PR: `make format-check`, backend unit tests, backend database tests against a fresh MySQL 8 loaded from `schema.sql` + `seed.sql`, and the frontend build. All four must pass. To check locally first:
+CI (`.github/workflows/ci.yml`) runs on every PR: `make format-check`, backend unit tests, backend database tests against a fresh MySQL 8 loaded from `schema.sql` + `seed.sql`, the frontend build, and frontend unit tests. All five must pass. To check locally first:
 
 - `cd backend && .venv/bin/python -m pytest` passes.
 - `cd frontend && npm run build` succeeds.
+- `cd frontend && npm test` passes.
 - The API table in `README.md` lists any new endpoints.
