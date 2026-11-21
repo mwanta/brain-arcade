@@ -123,3 +123,484 @@
     animation: none;
   }
 }
+
+/* Playing a level: stage, overlays, time bar, feedback and the arrow pad. */
+.drift-level {
+  --drift-ui-ink: #f4f1e8;
+  --drift-ui-panel: rgb(11 11 20 / 0.82);
+  --drift-ui-correct: #3ddc84;
+  --drift-ui-wrong: #ff6b6b;
+  --drift-ui-late: #ffd166;
+  --drift-ui-track: #1b1e2e;
+  --drift-ui-bar: #ffd166;
+  --drift-ui-bar-low: #ff6b6b;
+  --drift-ui-key: #3a3f5c;
+  --drift-ui-key-hover: #4d5380;
+  --drift-ui-key-active: #ffd166;
+  --drift-ui-key-active-ink: #0b0b14;
+  --drift-ui-key-edge: #0b0b14;
+
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.drift-status {
+  display: flex;
+  justify-content: space-between;
+  margin: 0 0 0.5rem;
+  font-weight: 600;
+}
+
+.drift-stage {
+  position: relative;
+  /* Stops mobile browsers scrolling or zooming mid-swipe. */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.drift-overlay {
+  position: absolute;
+  inset: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  box-sizing: border-box;
+  text-align: center;
+  color: var(--drift-ui-ink);
+  background: var(--drift-ui-panel);
+}
+
+.drift-ready p {
+  margin: 0;
+  max-width: 20em;
+  font-size: 1.25rem;
+}
+
+.drift-start {
+  min-height: 56px;
+  padding: 0 2rem;
+  font: inherit;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--drift-ui-key-active-ink);
+  background: var(--drift-ui-key-active);
+  border: 3px solid var(--drift-ui-key-edge);
+  cursor: pointer;
+}
+
+.drift-feedback {
+  font-weight: 700;
+  animation: drift-feedback-pop 150ms steps(3, jump-none);
+}
+
+.drift-feedback-icon {
+  font-size: 4rem;
+  line-height: 1;
+}
+
+.drift-feedback-text {
+  font-size: 1.75rem;
+}
+
+.drift-feedback-answer,
+.drift-feedback-note {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.drift-feedback-correct .drift-feedback-icon,
+.drift-feedback-correct .drift-feedback-text {
+  color: var(--drift-ui-correct);
+}
+
+.drift-feedback-wrong .drift-feedback-icon,
+.drift-feedback-wrong .drift-feedback-text {
+  color: var(--drift-ui-wrong);
+}
+
+.drift-feedback-timeout .drift-feedback-icon,
+.drift-feedback-timeout .drift-feedback-text {
+  color: var(--drift-ui-late);
+}
+
+@keyframes drift-feedback-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.drift-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.drift-timebar {
+  box-sizing: border-box;
+  height: 14px;
+  margin: 1rem 0;
+  overflow: hidden;
+  background: var(--drift-ui-track);
+  border: 3px solid var(--drift-frame-color, #0b0b14);
+}
+
+.drift-timebar-fill {
+  width: 100%;
+  height: 100%;
+  background: var(--drift-ui-bar);
+  transform-origin: left center;
+  animation: drift-timebar-shrink linear forwards;
+}
+
+@keyframes drift-timebar-shrink {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+.drift-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 72px);
+  grid-template-rows: repeat(3, 72px);
+  gap: 8px;
+  justify-content: center;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.drift-pad-button {
+  min-width: 56px;
+  min-height: 56px;
+  padding: 0;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--drift-ui-ink);
+  background: var(--drift-ui-key);
+  border: 3px solid var(--drift-ui-key-edge);
+  box-shadow: 0 5px 0 var(--drift-ui-key-edge);
+  cursor: pointer;
+  touch-action: none;
+}
+
+.drift-pad-up {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.drift-pad-left {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.drift-pad-right {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.drift-pad-down {
+  grid-column: 2;
+  grid-row: 3;
+}
+
+.drift-pad-button:hover:not(:disabled) {
+  background: var(--drift-ui-key-hover);
+}
+
+.drift-pad-button:active:not(:disabled) {
+  color: var(--drift-ui-key-active-ink);
+  background: var(--drift-ui-key-active);
+  transform: translateY(4px);
+  box-shadow: 0 1px 0 var(--drift-ui-key-edge);
+}
+
+.drift-pad-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drift-feedback {
+    animation: none;
+  }
+
+  /* The bar steps down in ten notches instead of sliding, but still shows the time left. */
+  .drift-timebar-fill {
+    animation-timing-function: steps(10, jump-none);
+  }
+}
+
+/* Level progress: fills as trials are answered. */
+.drift-progress {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 0.75rem;
+}
+
+.drift-progress-segment {
+  flex: 1 1 0;
+  height: 14px;
+  box-sizing: border-box;
+  background: var(--drift-ui-track);
+  border: 3px solid var(--drift-ui-key-edge);
+}
+
+.drift-progress-correct {
+  background: var(--drift-ui-correct);
+}
+
+.drift-progress-wrong {
+  background: var(--drift-ui-wrong);
+}
+
+.drift-progress-timeout {
+  background: var(--drift-ui-late);
+}
+
+.drift-ready .drift-ready-note {
+  padding: 0.5rem 0.75rem;
+  font-size: 1.05rem;
+  background: rgb(255 255 255 / 0.12);
+  border: 2px solid var(--drift-ui-late);
+}
+
+.drift-ready-title {
+  margin: 0;
+  font-size: 2rem;
+}
+
+/* Board and time bar on the left, arrow pad on the right; stacked on narrow screens. */
+.drift-level {
+  max-width: 1000px;
+}
+
+.drift-play {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.drift-main {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 720px;
+}
+
+.drift-main .drift-timebar {
+  margin-bottom: 0;
+}
+
+.drift-play .drift-pad {
+  flex: none;
+}
+
+@media (max-width: 700px) {
+  .drift-play {
+    flex-direction: column;
+  }
+
+  .drift-main {
+    width: 100%;
+  }
+}
+
+/* Retro game font for everything inside a level. Jersey 10 is loaded in index.html; the
+   monospace stack is the fallback. The font is wide, so sizes are smaller than the defaults. */
+.drift-level {
+  --drift-font: 'Jersey 10', ui-monospace, 'Courier New', monospace;
+
+  font-family: var(--drift-font);
+  line-height: 1.6;
+}
+
+.drift-level button {
+  font-family: var(--drift-font);
+}
+
+.drift-level .drift-ready p {
+  font-size: 0.85rem;
+}
+
+.drift-level .drift-ready .drift-ready-note {
+  font-size: 0.7rem;
+}
+
+.drift-level .drift-ready-title {
+  font-size: 1.25rem;
+}
+
+.drift-level .drift-start {
+  font-size: 1rem;
+}
+
+.drift-level .drift-feedback-text {
+  font-size: 1.25rem;
+}
+
+.drift-level .drift-feedback-answer,
+.drift-level .drift-feedback-note {
+  font-size: 0.7rem;
+}
+
+.drift-feedback-answer {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.drift-feedback-icon,
+.drift-pixel-icon {
+  display: block;
+  line-height: 0;
+  image-rendering: pixelated;
+}
+
+/* Press Start 2P has one weight; any bold on top of it is a smeared fake. */
+.drift-level,
+.drift-level h2,
+.drift-level button,
+.drift-level .drift-feedback,
+.drift-level .drift-feedback-answer,
+.drift-level .drift-feedback-note {
+  font-weight: 400;
+}
+
+.drift-level .drift-overlay {
+  gap: 1.5rem;
+}
+
+.drift-level .drift-ready p {
+  line-height: 2;
+}
+
+.drift-level .drift-ready .drift-ready-note {
+  line-height: 2;
+}
+
+.drift-level .drift-feedback {
+  gap: 1.25rem;
+}
+
+/* Centre the icon in each pad button. */
+.drift-pad-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Let the start-screen text use most of the board's width. */
+.drift-level .drift-ready p {
+  max-width: 90%;
+}
+
+/* Jersey 10 is narrow and small for its size: upper case, larger sizes, tighter lines. */
+.drift-level {
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.drift-level .drift-ready p,
+.drift-level .drift-ready .drift-ready-note {
+  font-size: 1.6rem;
+  line-height: 1.25;
+}
+
+.drift-level .drift-ready-title {
+  font-size: 3rem;
+}
+
+.drift-level .drift-start {
+  font-size: 2rem;
+}
+
+.drift-level .drift-feedback-text {
+  font-size: 2.75rem;
+}
+
+.drift-level .drift-feedback-answer,
+.drift-level .drift-feedback-note {
+  font-size: 1.5rem;
+}
+
+/* Larger text (overrides the sizes above). */
+.drift-level .drift-ready p,
+.drift-level .drift-ready .drift-ready-note {
+  font-size: 2.1rem;
+}
+
+.drift-level .drift-ready-title {
+  font-size: 3.75rem;
+}
+
+.drift-level .drift-start {
+  font-size: 2.5rem;
+}
+
+.drift-level .drift-feedback-text {
+  font-size: 3.5rem;
+}
+
+.drift-level .drift-feedback-answer,
+.drift-level .drift-feedback-note {
+  font-size: 1.9rem;
+}
+
+/* Only the level title is upper case. */
+.drift-level {
+  text-transform: none;
+}
+
+.drift-level .drift-ready-title {
+  text-transform: uppercase;
+}
+
+/* Final score, drawn over the empty road. */
+.drift-level .drift-score {
+  gap: 0.75rem;
+  overflow: auto;
+}
+
+.drift-level .drift-score p {
+  margin: 0;
+}
+
+.drift-level .drift-score-total {
+  font-size: 4.5rem;
+  line-height: 1;
+  color: var(--drift-ui-late);
+}
+
+.drift-level .drift-score-max {
+  font-size: 2rem;
+  color: var(--drift-ui-ink);
+}
+
+.drift-level .drift-score-line {
+  font-size: 2rem;
+}
+
+/* Same space between the title and the score as between the last line and the button. */
+.drift-level .drift-score .drift-ready-title {
+  margin: 0 0 1rem;
+  line-height: 1;
+}
+
+.drift-level .drift-score .drift-start {
+  margin-top: 1rem;
+}

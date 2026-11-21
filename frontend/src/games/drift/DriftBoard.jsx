@@ -52,10 +52,11 @@ function describeCars(trial, cars, grey) {
  *     cars: Array<{ state: string, facing: string, moving: string }>,
  *     distractors?: Array<{ state: string, facing: string, moving: string }>,
  *   },
- *   moveSpeed: number, running: boolean, seed: number,
- * }} props `moveSpeed` is in board units per second; `seed` picks the start layout.
+ *   moveSpeed: number, running: boolean, seed: number, showCars?: boolean,
+ * }} props `moveSpeed` is in board units per second; `seed` picks the start layout. With
+ *   `showCars` false (default true) the road is drawn empty.
  */
-export default function DriftBoard({ trial, moveSpeed, running, seed }) {
+export default function DriftBoard({ trial, moveSpeed, running, seed, showCars = true }) {
   const patternId = `drift-road-${useId().replace(/:/g, '')}`;
   const reducedMotion = usePrefersReducedMotion();
 
@@ -155,20 +156,21 @@ export default function DriftBoard({ trial, moveSpeed, running, seed }) {
           </g>
         ))}
       </g>
-      {[...sprites].reverse().map(({ id, car, distractor }) => (
-        <CarSprite
-          key={id}
-          ref={(node) => {
-            nodes.current[id] = node;
-          }}
-          x={starts[id].x}
-          y={starts[id].y}
-          facing={car.facing}
-          moving={car.moving}
-          state={car.state}
-          distractor={distractor}
-        />
-      ))}
+      {showCars &&
+        [...sprites].reverse().map(({ id, car, distractor }) => (
+          <CarSprite
+            key={id}
+            ref={(node) => {
+              nodes.current[id] = node;
+            }}
+            x={starts[id].x}
+            y={starts[id].y}
+            facing={car.facing}
+            moving={car.moving}
+            state={car.state}
+            distractor={distractor}
+          />
+        ))}
     </svg>
   );
 }
