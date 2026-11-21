@@ -21,6 +21,8 @@ class PlayerStore:
                     "username": req.username,
                     "birthday": req.birthday,
                     "gender": req.gender,
+                    "occupation": req.occupation,
+                    "education_level": req.education_level,
                 },
             )
             new_id = cur.lastrowid

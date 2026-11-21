@@ -13,7 +13,16 @@ class FakePlayerStore:
         self._players, self._next_id = {}, 1
 
     def create(self, req):
-        player = Player(self._next_id, req.username, req.birthday, req.gender, CREATED_AT, CREATED_AT)
+        player = Player(
+            self._next_id,
+            req.username,
+            req.birthday,
+            req.gender,
+            req.occupation,
+            req.education_level,
+            CREATED_AT,
+            CREATED_AT,
+        )
         self._players[player.player_id] = player
         self._next_id += 1
         return player

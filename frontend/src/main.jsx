@@ -7,6 +7,7 @@ import PlayersPage from './pages/PlayersPage.jsx';
 import PlayerDetailPage from './pages/PlayerDetailPage.jsx';
 import CreatePlayerPage from './pages/CreatePlayerPage.jsx';
 import EditPlayerPage from './pages/EditPlayerPage.jsx';
+import PlayerStatsPage from './pages/PlayerStatsPage.jsx';
 import './styles.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -19,6 +20,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/players/new" element={<CreatePlayerPage />} />
           <Route path="/players/:playerId" element={<PlayerDetailPage />} />
           <Route path="/players/:playerId/edit" element={<EditPlayerPage />} />
+          <Route path="/players/:playerId/stats" element={<PlayerStatsPage />} />
           <Route path="*" element={<p>Page not found.</p>} />
         </Route>
       </Routes>

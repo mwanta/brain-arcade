@@ -22,6 +22,8 @@ def test_create_returns_201_and_json(client):
         "username": "ada",
         "birthday": "1995-12-10",
         "gender": None,
+        "occupation": None,
+        "education_level": None,
         "created_at": "2026-01-01T12:00:00",
         "updated_at": "2026-01-01T12:00:00",
     }

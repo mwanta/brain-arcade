@@ -58,10 +58,10 @@ Errors return `{error, details}` with 400 (validation), 404 (not found) or 409 (
 |---|---|---|
 | GET | /api/players | |
 | GET | /api/players/:id | |
-| POST | /api/players | `{username, birthday, gender?}` |
-| PATCH | /api/players/:id | any subset of `username, birthday, gender` |
+| POST | /api/players | `{username, birthday, gender?, occupation?, education_level?}` |
+| PATCH | /api/players/:id | any subset of `username, birthday, gender, occupation, education_level` |
 
-`gender` is one of `female, male, non_binary, other, prefer_not_to_say`. `player_id`, `created_at` and `updated_at` are server-assigned.
+`gender` is one of `female, male, non_binary, other, prefer_not_to_say`. `occupation` is one of `student, technology, healthcare, education, business, trades, arts_media, service, retired, unemployed, other`. `education_level` is one of (lowest to highest) `less_than_high_school, high_school, some_college, associate, bachelor, master, doctorate`. `player_id`, `created_at` and `updated_at` are server-assigned.
 
 **Game catalog** (read-only; edit through `seed.sql`)
 
@@ -101,3 +101,24 @@ Errors return `{error, details}` with 400 (validation), 404 (not found) or 409 (
 | GET | /api/players/:id/stats/history | each play's score over time |
 | GET | /api/players/:id/stats/summary | per game: plays, best and average score, last played |
 | GET | /api/players/:id/stats/comparison | per game: the player's average vs. their age decade (e.g. `30-39`), group size, and `percentile` (% of others in the group with a lower average) |
+
+**Cohort stats** compare a player with a filtered group of other players (their *cohort*). They take the same `from`, `to` and `game_id` filters as above, plus any of these cohort filters, combined with AND. With no filters, the cohort is every player. The player is always part of their own cohort.
+
+| Filter | Example | Meaning |
+|---|---|---|
+| `gender`, `occupation`, `education_level` | `occupation=student,retired` | include only these values (comma-separated) |
+| `education_min`, `education_max` | `education_min=bachelor` | education range, inclusive |
+| `age_min`, `age_max` | `age_min=20&age_max=35` | current age range, inclusive |
+| `match` | `match=age_group,occupation` | same value as the player; `age_group` is the same decade |
+| `min_plays` | `min_plays=3` | a member counts for a game only after this many plays of it (default 1) |
+
+| Method | Path | Returns |
+|---|---|---|
+| GET | /api/players/:id/stats/cohort/comparison | per game: the player's plays, average and best vs. the cohort's size and average, plus the player's rank and `percentile` |
+| GET | /api/players/:id/stats/cohort/distribution | per game and best score reached: how many members have that best score, the percentile range (`percentile_low` to `percentile_high`) it covers, and `is_player_best` |
+| GET | /api/players/:id/stats/cohort/breakdown | per game: the cohort split by `group_by` (`age_group`, `gender`, `occupation` (default) or `education_level`), with each group's size, average and rank, and `is_player_group` |
+| GET | /api/players/:id/stats/cohort/learning-curve | per game and play number (1 to `max_play_number`, default 10): the player's score vs. the peer average on their play with the same number |
+| GET | /api/players/:id/stats/cohort/conditions | per check-in factor (`sleep`, `caffeine`, `stress`, `exercise`) and bucket: plays and average completion (share of the game's levels passed) for the player and for peers |
+| GET | /api/players/:id/stats/cohort/levels | per level the player attempted: attempts, pass rate and average time on passed attempts vs. the cohort, the level's time limit and error allowance, and the player's pass-rate percentile |
+
+Percentages are 0-100. "Peers" means the cohort minus the player. The filtering is done by the `load_cohort` stored procedure (see [SCHEMA.md](SCHEMA.md)).
