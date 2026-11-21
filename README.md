@@ -60,6 +60,7 @@ Errors return `{error, details}` with 400 (validation), 404 (not found) or 409 (
 | GET | /api/players/:id | |
 | POST | /api/players | `{username, birthday, gender?, occupation?, education_level?}` |
 | PATCH | /api/players/:id | any subset of `username, birthday, gender, occupation, education_level` |
+| POST | /api/login | `{username}`; returns the player, or 404 if no player has that username. There are no passwords: the frontend keeps the logged-in player in memory (a refresh logs out). |
 
 `gender` is one of `female, male, non_binary, other, prefer_not_to_say`. `occupation` is one of `student, technology, healthcare, education, business, trades, arts_media, service, retired, unemployed, other`. `education_level` is one of (lowest to highest) `less_than_high_school, high_school, some_college, associate, bachelor, master, doctorate`. `player_id`, `created_at` and `updated_at` are server-assigned.
 

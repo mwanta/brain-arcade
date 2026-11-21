@@ -13,7 +13,7 @@ from internal.handlers.session_handler import SessionHandler
 from internal.handlers.stats_handler import StatsHandler
 from internal.routes.catalog_routes import create_catalog_routes
 from internal.routes.game_play_routes import create_game_play_routes
-from internal.routes.player_routes import create_player_routes
+from internal.routes.player_routes import create_login_routes, create_player_routes
 from internal.routes.session_routes import create_session_routes
 from internal.routes.stats_routes import create_stats_routes
 
@@ -39,7 +39,9 @@ def create_app(config=None, repo=None):
 
 def register_routes(app, repo):
     """Builds each handler from the repo and mounts its routes."""
-    app.register_blueprint(create_player_routes(PlayerHandler(repo)))
+    player_handler = PlayerHandler(repo)
+    app.register_blueprint(create_player_routes(player_handler))
+    app.register_blueprint(create_login_routes(player_handler))
     app.register_blueprint(create_catalog_routes(CatalogHandler(repo)))
     app.register_blueprint(create_session_routes(SessionHandler(repo)))
     app.register_blueprint(create_game_play_routes(GamePlayHandler(repo)))
