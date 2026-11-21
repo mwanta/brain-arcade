@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { getPlayer } from '../api/playersApi.js';
 import { listGames } from '../api/catalogApi.js';
 import ErrorMessage from '../components/ErrorMessage.jsx';
@@ -13,8 +13,8 @@ import ConditionImpact from '../components/ConditionImpact.jsx';
 import LevelPerformance from '../components/LevelPerformance.jsx';
 import { readFilters, writeFilters } from '../components/cohortFilters.js';
 
-export default function PlayerStatsPage() {
-  const { playerId } = useParams();
+// Stats for the logged-in player, whose ID is passed down from <RequireLogin>.
+export default function PlayerStatsPage({ playerId }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const filters = useMemo(() => readFilters(searchParams), [searchParams]);
   const [player, setPlayer] = useState(null);
@@ -30,7 +30,7 @@ export default function PlayerStatsPage() {
 
   return (
     <section className="stats-page">
-      <PlayerStatsHeader player={player} playerId={playerId} />
+      <PlayerStatsHeader player={player} />
       <ErrorMessage error={error} />
       <CohortFilters
         value={filters}

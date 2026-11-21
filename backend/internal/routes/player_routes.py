@@ -2,7 +2,7 @@
 
 from flask import Blueprint, jsonify, request
 
-from internal.models.player import CreatePlayerRequest, UpdatePlayerRequest
+from internal.models.player import CreatePlayerRequest, LoginRequest, UpdatePlayerRequest
 
 
 def create_player_routes(player_handler):
@@ -25,5 +25,17 @@ def create_player_routes(player_handler):
     def update_player(player_id):
         req = UpdatePlayerRequest.from_json(request.get_json(silent=True))
         return jsonify(player_handler.update_player(player_id, req).to_json())
+
+    return bp
+
+
+def create_login_routes(player_handler):
+    """POST /api/login {username} -> the player. Username only; there is no auth."""
+    bp = Blueprint("login", __name__, url_prefix="/api/login")
+
+    @bp.post("")
+    def login():
+        req = LoginRequest.from_json(request.get_json(silent=True))
+        return jsonify(player_handler.login(req).to_json())
 
     return bp

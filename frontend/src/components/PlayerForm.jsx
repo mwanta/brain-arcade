@@ -5,7 +5,7 @@ import { EDUCATION_LEVEL_OPTIONS } from './educationLevels.js';
 
 const EMPTY = { username: '', birthday: '', gender: '', occupation: '', education_level: '' };
 
-// Controlled form used by both Create and Edit pages.
+// Controlled player form, used to create a player on the login page.
 // `onSubmit(values)` should return a promise; ApiError.details are shown per field.
 export default function PlayerForm({ initialValues = EMPTY, submitLabel, onSubmit }) {
   const [values, setValues] = useState({

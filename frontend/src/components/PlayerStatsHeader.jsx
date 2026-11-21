@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom';
 import { genderLabel } from './genders.js';
 import { occupationLabel } from './occupations.js';
 import { educationLevelLabel } from './educationLevels.js';
@@ -14,7 +13,7 @@ function ageOf(birthday) {
 }
 
 // Banner at the top of the stats page: who the stats are for.
-export default function PlayerStatsHeader({ player, playerId }) {
+export default function PlayerStatsHeader({ player }) {
   const details = player
     ? [
         `Age ${ageOf(player.birthday)}`,
@@ -42,9 +41,6 @@ export default function PlayerStatsHeader({ player, playerId }) {
           </ul>
         </div>
       </div>
-      <Link className="hero-link" to={`/players/${playerId}`}>
-        ← Back to player
-      </Link>
     </header>
   );
 }

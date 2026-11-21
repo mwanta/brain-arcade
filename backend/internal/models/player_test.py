@@ -3,7 +3,7 @@ from datetime import date, datetime
 import pytest
 
 from internal.errors import ValidationError
-from internal.models.player import CreatePlayerRequest, Player, UpdatePlayerRequest
+from internal.models.player import CreatePlayerRequest, LoginRequest, Player, UpdatePlayerRequest
 
 
 def test_create_request_parses_valid_payload():
@@ -93,3 +93,10 @@ def test_player_to_json():
         "created_at": "2026-01-01T12:00:00",
         "updated_at": "2026-01-02T09:30:00",
     }
+
+
+def test_login_request_trims_and_requires_username():
+    assert LoginRequest.from_json({"username": "  ada "}) == LoginRequest("ada")
+    for payload in ({}, {"username": "  "}, {"username": 5}, None):
+        with pytest.raises(ValidationError):
+            LoginRequest.from_json(payload)

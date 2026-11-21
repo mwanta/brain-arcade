@@ -99,6 +99,23 @@ class UpdatePlayerRequest:
         return {name: getattr(self, name) for name in UPDATABLE_FIELDS if name in self.fields_set}
 
 
+@dataclass(frozen=True)
+class LoginRequest:
+    """Log in by username alone (there are no passwords)."""
+
+    username: str
+
+    @classmethod
+    def from_json(cls, payload):
+        if not isinstance(payload, dict):
+            raise ValidationError("Request body must be a JSON object")
+        username = payload.get("username")
+        username = username.strip() if isinstance(username, str) else ""
+        if not username:
+            raise ValidationError("Invalid login", {"username": "Required"})
+        return cls(username)
+
+
 # ---- parsing helpers --------------------------------------------------------
 
 

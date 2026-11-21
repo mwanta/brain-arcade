@@ -20,6 +20,15 @@ class PlayerHandler:
             raise NotFoundError(f"Player {player_id} not found")
         return player
 
+    def login(self, req):
+        """Returns the player with this username. There is no password check."""
+        player = self._store.get_by_username(req.username)
+        if player is None:
+            raise NotFoundError(
+                "No player with that username", {"username": f"No player named '{req.username}'"}
+            )
+        return player
+
     def create_player(self, req):
         if self._store.get_by_username(req.username):
             raise _username_taken(req.username)
