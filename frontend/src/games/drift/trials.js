@@ -21,8 +21,9 @@ function movingFor(state, facing, differs, rng) {
 /**
  * Generate every trial of a level, reproducibly.
  *
- * Every car in a trial is identical and every car is a target, so following any of them gives
- * the answer. (The level's `mixedTraffic` setting is ignored.)
+ * Every car in `cars` is identical and every one is a target, so following any of them gives the
+ * answer. `distractors` are grey cars that drive (facing and moving the same way) in the
+ * direction opposite to the target cars' movement; they are never part of the answer.
  *
  * @param {ReturnType<import('./settings.js').parseLevelSettings>} settings Parsed settings.
  * @param {number} seed Integer seed; the same settings and seed give identical trials.
@@ -32,12 +33,13 @@ function movingFor(state, facing, differs, rng) {
  *   conflict: boolean,
  *   answer: string,
  *   cars: Array<{ state: 'drive' | 'drift', facing: string, moving: string }>,
+ *   distractors: Array<{ state: 'drive', facing: string, moving: string }>,
  * }>} trialCount trials. `rule` is the cars' state; `conflict` is true when their facing differs
  *   from their moving direction.
  */
 export function generateTrials(settings, seed) {
   const rng = createRng(seed);
-  const { trialCount, switchProbability, carCount, conflictRatio } = settings;
+  const { trialCount, switchProbability, carCount, conflictRatio, distractorCount } = settings;
 
   const conflictCount = Math.round(trialCount * conflictRatio);
   const conflictFlags = rng.shuffle(
@@ -56,7 +58,14 @@ export function generateTrials(settings, seed) {
     const car = { state: rule, facing, moving };
     const cars = Array.from({ length: carCount }, () => ({ ...car }));
 
-    trials.push({ index, rule, conflict, answer: answerFor(car), cars });
+    const lane = oppositeDirection(moving);
+    const distractors = Array.from({ length: distractorCount }, () => ({
+      state: 'drive',
+      facing: lane,
+      moving: lane,
+    }));
+
+    trials.push({ index, rule, conflict, answer: answerFor(car), cars, distractors });
   }
   return trials;
 }

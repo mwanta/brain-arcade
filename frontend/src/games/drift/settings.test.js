@@ -9,11 +9,11 @@ const LEVEL_1 = {
   car_count: 2,
   move_speed: 50,
   conflict_ratio: 0.2,
-  mixed_traffic: 0,
+  distractor_count: 0,
 };
 
 describe('parseLevelSettings', () => {
-  it('accepts valid input and converts names and mixed_traffic', () => {
+  it('accepts valid input and converts names', () => {
     expect(parseLevelSettings(LEVEL_1)).toEqual({
       trialCount: 10,
       timeLimit: 3000,
@@ -22,9 +22,9 @@ describe('parseLevelSettings', () => {
       carCount: 2,
       moveSpeed: 50,
       conflictRatio: 0.2,
-      mixedTraffic: false,
+      distractorCount: 0,
     });
-    expect(parseLevelSettings({ ...LEVEL_1, mixed_traffic: 1 }).mixedTraffic).toBe(true);
+    expect(parseLevelSettings({ ...LEVEL_1, distractor_count: 3 }).distractorCount).toBe(3);
   });
 
   it.each(Object.keys(LEVEL_1))('throws naming %s when it is missing', (key) => {
@@ -43,8 +43,8 @@ describe('parseLevelSettings', () => {
     ['switch_probability', 1.1],
     ['conflict_ratio', -0.1],
     ['conflict_ratio', 1.1],
-    ['mixed_traffic', 2],
-    ['mixed_traffic', 0.5],
+    ['distractor_count', -1],
+    ['distractor_count', 1.5],
   ])('throws naming %s when it is %s', (key, value) => {
     expect(() => parseLevelSettings({ ...LEVEL_1, [key]: value })).toThrow(key);
   });
@@ -59,11 +59,5 @@ describe('parseLevelSettings', () => {
         conflict_ratio: 0,
       })
     ).not.toThrow();
-  });
-
-  it('throws for mixed traffic with one car', () => {
-    expect(() => parseLevelSettings({ ...LEVEL_1, mixed_traffic: 1, car_count: 1 })).toThrow(
-      'car_count'
-    );
   });
 });

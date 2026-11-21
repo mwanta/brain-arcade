@@ -45,7 +45,8 @@ const BEAMS = Array.from({ length: BEAM_ROWS }, (_, i) => {
  * One car, top-down, as pixel art. The art points up and is rotated to `facing`. Drifting cars are
  * blue and driving cars red, but every cue also has a shape, so none relies on colour alone:
  *   front = narrow nose, headlamp row and pale windshield (the tail has a wide spoiler and a dark window)
- *   lights = every car has headlights on: two stepped beam cones plus bright headlamps
+ *   lights = cars to follow have headlights on: two stepped beam cones plus bright headlamps;
+ *            grey distractors have dark headlamps and no beams
  *   drift = smoke blocks and skid dashes trailing behind `moving`,
  *           drawn unrotated
  *
@@ -57,9 +58,13 @@ const BEAMS = Array.from({ length: BEAM_ROWS }, (_, i) => {
  *   facing: 'up' | 'down' | 'left' | 'right',
  *   moving: 'up' | 'down' | 'left' | 'right',
  *   state: 'drive' | 'drift',
+ *   distractor?: boolean,
  * }} props `moving` is the direction of travel, which places the drift trail.
  */
-const CarSprite = forwardRef(function CarSprite({ x, y, facing, moving, state }, ref) {
+const CarSprite = forwardRef(function CarSprite(
+  { x, y, facing, moving, state, distractor = false },
+  ref
+) {
   const drifting = state === 'drift';
   // The trail sits opposite the direction of travel, which may differ from the facing.
   const travel = directionVector(moving);
@@ -73,7 +78,7 @@ const CarSprite = forwardRef(function CarSprite({ x, y, facing, moving, state },
   return (
     <g
       ref={ref}
-      className={drifting ? 'drift-car-drifting' : undefined}
+      className={drifting ? 'drift-car-drifting' : distractor ? 'drift-car-distractor' : undefined}
       transform={translateAttr({ x, y })}
     >
       {drifting && (
@@ -111,11 +116,13 @@ const CarSprite = forwardRef(function CarSprite({ x, y, facing, moving, state },
       )}
 
       <g transform={`rotate(${directionAngle(facing)})`}>
-        <g aria-hidden="true">
-          {BEAMS.map((b, i) => (
-            <rect key={i} className="drift-beam" x={b.x} y={b.y} width={b.w} height={PX} />
-          ))}
-        </g>
+        {!distractor && (
+          <g aria-hidden="true">
+            {BEAMS.map((b, i) => (
+              <rect key={i} className="drift-beam" x={b.x} y={b.y} width={b.w} height={PX} />
+            ))}
+          </g>
+        )}
         {RUNS.map((run, i) => (
           <rect key={i} className={run.cls} x={run.x} y={run.y} width={run.w} height={PX} />
         ))}

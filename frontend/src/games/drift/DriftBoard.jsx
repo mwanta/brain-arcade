@@ -7,10 +7,10 @@ import { createRng } from './random.js';
 import './drift.css';
 
 const SIZE = 600;
-// Each trial car is drawn several times (look-alikes copy its facing, moving and state), so the
-// board is full of cars. Sprites are scattered across the board so that no car's headlights,
-// smoke or skid marks overlap another's; if that many do not fit, fewer are drawn.
-const SPRITES_PER_CAR = 4;
+// Cars are scattered across the board so that no car's headlights, smoke or skid marks overlap
+// another's, now or as they drive past each other. If a level's cars do not all fit, fewer are
+// drawn.
+const FALLBACK_SCALES = [0.75, 0.5, 0.25];
 // A car wraps once it is this far past an edge, which keeps it (and its beams and smoke) fully
 // off-screen when it reappears on the other side.
 const WRAP_MARGIN = 80;
@@ -34,19 +34,24 @@ function usePrefersReducedMotion() {
   return reduced;
 }
 
-function describeCars(trial, perCar) {
+function describeCars(trial, cars, grey) {
   const car = trial.cars[0];
-  const subject = `${trial.cars.length * perCar} identical cars`;
   const verb = car.state === 'drift' ? 'drifting' : 'driving';
-  return `${subject} facing ${car.facing}, ${verb} ${car.moving}`;
+  const subject = cars === 1 ? 'Car' : `${cars} identical cars`;
+  const extra = grey > 0 ? `, with ${grey} grey cars driving ${trial.distractors[0].moving}` : '';
+  return `${subject} facing ${car.facing}, ${verb} ${car.moving}${extra}`;
 }
 
 /**
- * The road and a trial's cars, all identical and all scattered across the board. Positions live in a ref and are written straight to each sprite's SVG transform every
- * frame, snapped to the pixel grid, so React does not re-render the tree while animating.
+ * The road, the cars to follow (all identical) and any grey distractor cars, scattered across
+ * the board. Positions live in a ref and are written straight to each sprite's SVG transform
+ * every frame, snapped to the pixel grid, so React does not re-render the tree while animating.
  *
  * @param {{
- *   trial: { cars: Array<{ state: string, facing: string, moving: string }> },
+ *   trial: {
+ *     cars: Array<{ state: string, facing: string, moving: string }>,
+ *     distractors?: Array<{ state: string, facing: string, moving: string }>,
+ *   },
  *   moveSpeed: number, running: boolean, seed: number,
  * }} props `moveSpeed` is in board units per second; `seed` picks the start layout.
  */
@@ -54,26 +59,46 @@ export default function DriftBoard({ trial, moveSpeed, running, seed }) {
   const patternId = `drift-road-${useId().replace(/:/g, '')}`;
   const reducedMotion = usePrefersReducedMotion();
 
-  // Start positions where no car's body, beams or trail overlaps another's. The cars are all
-  // identical, so one footprint covers them. Try SPRITES_PER_CAR look-alikes per car, then fewer.
+  // Start positions where no car's body, beams or trail overlaps another's, now or later. The
+  // cars to follow and the grey distractors drive opposite ways along one axis, so each group
+  // gets its own band across the road (see layoutClear).
   const layout = useMemo(() => {
-    const first = trial.cars[0];
-    const footprint = carFootprint(first.facing, first.moving, first.state === 'drift');
-    for (let perCar = SPRITES_PER_CAR; perCar >= 1; perCar--) {
-      const starts = layoutClear(trial.cars.length * perCar, createRng(seed), SIZE, footprint);
-      if (starts) return { perCar, starts };
+    const target = trial.cars[0];
+    const distractors = trial.distractors ?? [];
+    const axis = target.moving === 'up' || target.moving === 'down' ? 'y' : 'x';
+    const footprint = carFootprint(target.facing, target.moving, target.state === 'drift');
+    const grey = distractors[0];
+    const greyFootprint = grey ? carFootprint(grey.facing, grey.moving, false, false) : footprint;
+    for (const scale of [1, ...FALLBACK_SCALES]) {
+      const cars = Math.max(1, Math.ceil(trial.cars.length * scale));
+      const greyCars = Math.ceil(distractors.length * scale);
+      const placed = layoutClear(
+        [
+          { footprint, count: cars },
+          { footprint: greyFootprint, count: greyCars },
+        ],
+        createRng(seed),
+        SIZE,
+        axis
+      );
+      if (placed) return { cars, greyCars, starts: [...placed[0], ...placed[1]] };
     }
-    return { perCar: 1, starts: layoutCars(trial.cars.length, createRng(seed), SIZE) };
+    const cars = trial.cars.length;
+    return { cars, greyCars: 0, starts: layoutCars(cars, createRng(seed), SIZE) };
   }, [trial, seed]);
   const { starts } = layout;
 
-  // One entry per sprite: each trial car, repeated perCar times.
+  // One entry per sprite: the cars to follow first, then the grey distractors.
   const sprites = useMemo(
-    () =>
-      trial.cars.flatMap((car, i) =>
-        Array.from({ length: layout.perCar }, (_, k) => ({ id: i * layout.perCar + k, car }))
-      ),
-    [trial, layout.perCar]
+    () => [
+      ...trial.cars.slice(0, layout.cars).map((car, id) => ({ id, car, distractor: false })),
+      ...(trial.distractors ?? []).slice(0, layout.greyCars).map((car, j) => ({
+        id: layout.cars + j,
+        car,
+        distractor: true,
+      })),
+    ],
+    [trial, layout.cars, layout.greyCars]
   );
   const positions = useRef(starts.map((p) => ({ ...p })));
   const nodes = useRef([]); // nodes.current[sprite id]
@@ -103,7 +128,7 @@ export default function DriftBoard({ trial, moveSpeed, running, seed }) {
     return () => cancelAnimationFrame(frame);
   }, [sprites, running, moveSpeed, reducedMotion]);
 
-  const label = describeCars(trial, layout.perCar);
+  const label = describeCars(trial, layout.cars, layout.greyCars);
 
   return (
     <svg
@@ -123,14 +148,14 @@ export default function DriftBoard({ trial, moveSpeed, running, seed }) {
       <rect className="drift-road" width={SIZE} height={SIZE} />
       <rect width={SIZE} height={SIZE} fill={`url(#${patternId})`} />
       <g aria-hidden="true">
-        {[102, 202, 302, 402, 502].map((n) => (
+        {[100, 200, 300, 400, 500].map((n) => (
           <g key={n}>
             <line className="drift-lane" x1={n} y1="0" x2={n} y2={SIZE} />
             <line className="drift-lane" x1="0" y1={n} x2={SIZE} y2={n} />
           </g>
         ))}
       </g>
-      {sprites.map(({ id, car }) => (
+      {[...sprites].reverse().map(({ id, car, distractor }) => (
         <CarSprite
           key={id}
           ref={(node) => {
@@ -141,6 +166,7 @@ export default function DriftBoard({ trial, moveSpeed, running, seed }) {
           facing={car.facing}
           moving={car.moving}
           state={car.state}
+          distractor={distractor}
         />
       ))}
     </svg>

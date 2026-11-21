@@ -6,7 +6,7 @@ const KEYS = [
   'car_count',
   'move_speed',
   'conflict_ratio',
-  'mixed_traffic',
+  'distractor_count',
 ];
 
 function fail(key, problem) {
@@ -15,13 +15,13 @@ function fail(key, problem) {
 
 /**
  * Validate a level's raw settings map (from GET /api/games/:id) and convert it
- * to camelCase with mixed_traffic as a boolean.
+ * to camelCase.
  *
  * @param {Record<string, number>} settings Raw settings with the 8 Drift keys.
  * @returns {{
  *   trialCount: number, timeLimit: number, maxErrors: number,
  *   switchProbability: number, carCount: number, moveSpeed: number,
- *   conflictRatio: number, mixedTraffic: boolean,
+ *   conflictRatio: number, distractorCount: number,
  * }} Parsed settings.
  * @throws {Error} Naming the key that is missing or out of range.
  */
@@ -43,9 +43,8 @@ export function parseLevelSettings(settings) {
   for (const key of ['switch_probability', 'conflict_ratio']) {
     if (v[key] < 0 || v[key] > 1) fail(key, 'must be between 0 and 1');
   }
-  if (v.mixed_traffic !== 0 && v.mixed_traffic !== 1) fail('mixed_traffic', 'must be 0 or 1');
-  if (v.mixed_traffic === 1 && v.car_count < 2) {
-    fail('car_count', 'must be >= 2 when mixed_traffic is 1');
+  if (!Number.isInteger(v.distractor_count) || v.distractor_count < 0) {
+    fail('distractor_count', 'must be a whole number >= 0');
   }
 
   return {
@@ -56,6 +55,6 @@ export function parseLevelSettings(settings) {
     carCount: v.car_count,
     moveSpeed: v.move_speed,
     conflictRatio: v.conflict_ratio,
-    mixedTraffic: v.mixed_traffic === 1,
+    distractorCount: v.distractor_count,
   };
 }

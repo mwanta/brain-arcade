@@ -36,18 +36,21 @@ function span(ax, ay, bx, by) {
  * @param {'up' | 'down' | 'left' | 'right'} facing Direction the front points.
  * @param {'up' | 'down' | 'left' | 'right'} moving Direction of travel.
  * @param {boolean} drifting Whether the car leaves smoke and skid marks.
- * @returns {Rect[]} Two rects, or three when drifting.
+ * @param {boolean} [lit=true] Whether its headlights are on (grey distractor cars have none).
+ * @returns {Rect[]} The body, plus beams when lit and a trail when drifting.
  */
-export function carFootprint(facing, moving, drifting) {
+export function carFootprint(facing, moving, drifting, lit = true) {
   const angle = directionAngle(facing);
   const halfW = CAR_WIDTH / 2;
   const halfL = CAR_LENGTH / 2;
   const beamHalfW = (BEAM_ROWS + 1) * PX;
 
-  const rects = [
-    rotateRect({ x0: -halfW, y0: -halfL, x1: halfW, y1: halfL }, angle),
-    rotateRect({ x0: -beamHalfW, y0: -halfL - BEAM_ROWS * PX, x1: beamHalfW, y1: -halfL }, angle),
-  ];
+  const rects = [rotateRect({ x0: -halfW, y0: -halfL, x1: halfW, y1: halfL }, angle)];
+  if (lit) {
+    rects.push(
+      rotateRect({ x0: -beamHalfW, y0: -halfL - BEAM_ROWS * PX, x1: beamHalfW, y1: -halfL }, angle)
+    );
+  }
 
   if (drifting) {
     const travel = directionVector(moving);
@@ -69,17 +72,18 @@ export function carFootprint(facing, moving, drifting) {
 }
 
 /**
- * Whether two footprints, with centres at `a` and `b`, come within `pad` of each other.
+ * Whether two cars' footprints, with centres at `a` and `b`, come within `pad` of each other.
  *
- * @param {Rect[]} footprint The (identical) footprint of both cars.
+ * @param {Rect[]} fa Footprint of the car centred at `a`.
  * @param {{ x: number, y: number }} a First centre.
+ * @param {Rect[]} fb Footprint of the car centred at `b`.
  * @param {{ x: number, y: number }} b Second centre.
  * @param {number} [pad=0] Extra clearance required between any two rects.
  * @returns {boolean} True if any rect of one is within pad of any rect of the other.
  */
-export function footprintsOverlap(footprint, a, b, pad = 0) {
-  return footprint.some((r) =>
-    footprint.some(
+export function footprintsOverlap(fa, a, fb, b, pad = 0) {
+  return fa.some((r) =>
+    fb.some(
       (s) =>
         a.x + r.x0 < b.x + s.x1 + pad &&
         b.x + s.x0 < a.x + r.x1 + pad &&
@@ -87,4 +91,38 @@ export function footprintsOverlap(footprint, a, b, pad = 0) {
         b.y + s.y0 < a.y + r.y1 + pad
     )
   );
+}
+
+/**
+ * The sideways band a car sweeps out while driving along an axis forever.
+ *
+ * @param {Rect[]} footprint The car's footprint.
+ * @param {'x' | 'y'} axis The axis it drives along.
+ * @returns {[number, number]} [low, high] of the footprint across the other axis.
+ */
+export function sweptExtent(footprint, axis) {
+  const lo = axis === 'x' ? 'y0' : 'x0';
+  const hi = axis === 'x' ? 'y1' : 'x1';
+  return [Math.min(...footprint.map((r) => r[lo])), Math.max(...footprint.map((r) => r[hi]))];
+}
+
+/**
+ * Whether two cars driving along the same axis, possibly in opposite directions, will ever
+ * come within `pad` of each other: they do if their sideways bands overlap, because one then
+ * drives through the other's lane.
+ *
+ * @param {Rect[]} fa Footprint of the car centred at `a`.
+ * @param {{ x: number, y: number }} a First centre.
+ * @param {Rect[]} fb Footprint of the car centred at `b`.
+ * @param {{ x: number, y: number }} b Second centre.
+ * @param {'x' | 'y'} axis The axis both cars drive along.
+ * @param {number} [pad=0] Extra clearance required between the bands.
+ * @returns {boolean} True if the sideways bands come within pad of each other.
+ */
+export function sweptOverlap(fa, a, fb, b, axis, pad = 0) {
+  const [alo, ahi] = sweptExtent(fa, axis);
+  const [blo, bhi] = sweptExtent(fb, axis);
+  const ac = axis === 'x' ? a.y : a.x;
+  const bc = axis === 'x' ? b.y : b.x;
+  return ac + alo < bc + bhi + pad && bc + blo < ac + ahi + pad;
 }

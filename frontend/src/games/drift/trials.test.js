@@ -11,9 +11,9 @@ const LEVEL_1 = {
   car_count: 2,
   move_speed: 50,
   conflict_ratio: 0.2,
-  mixed_traffic: 0,
+  distractor_count: 0,
 };
-const MIXED = {
+const LEVEL_10 = {
   trial_count: 30,
   time_limit: 1500,
   max_errors: 2,
@@ -21,17 +21,17 @@ const MIXED = {
   car_count: 6,
   move_speed: 130,
   conflict_ratio: 0.75,
-  mixed_traffic: 1,
+  distractor_count: 4,
 };
 
 const SEEDS = Array.from({ length: 200 }, (_, i) => i + 1);
 const level1 = parseLevelSettings(LEVEL_1);
-const mixed = parseLevelSettings(MIXED);
+const level10 = parseLevelSettings(LEVEL_10);
 
 describe('generateTrials', () => {
   it('returns trialCount trials with 0-based indexes and carCount cars', () => {
     for (const seed of SEEDS) {
-      for (const s of [level1, mixed]) {
+      for (const s of [level1, level10]) {
         const trials = generateTrials(s, seed);
         expect(trials).toHaveLength(s.trialCount);
         trials.forEach((t, i) => {
@@ -53,13 +53,13 @@ describe('generateTrials', () => {
   it('rounds the conflict count', () => {
     for (const seed of SEEDS) {
       expect(generateTrials(level1, seed).filter((t) => t.conflict)).toHaveLength(2);
-      expect(generateTrials(mixed, seed).filter((t) => t.conflict)).toHaveLength(23);
+      expect(generateTrials(level10, seed).filter((t) => t.conflict)).toHaveLength(23);
     }
   });
 
   it('makes lit car facing/moving match the conflict flag', () => {
     for (const seed of SEEDS) {
-      for (const s of [level1, mixed]) {
+      for (const s of [level1, level10]) {
         for (const t of generateTrials(s, seed)) {
           const car = t.cars[0];
           expect(car.facing === car.moving).toBe(!t.conflict);
@@ -70,7 +70,7 @@ describe('generateTrials', () => {
 
   it('answers follow the rule', () => {
     for (const seed of SEEDS) {
-      for (const s of [level1, mixed]) {
+      for (const s of [level1, level10]) {
         for (const t of generateTrials(s, seed)) {
           const car = t.cars[0];
           expect(car.state).toBe(t.rule);
@@ -83,7 +83,7 @@ describe('generateTrials', () => {
   it('driving cars only go forward or in reverse; drifting cars can slide sideways', () => {
     let slid = 0;
     for (const seed of SEEDS) {
-      for (const s of [level1, mixed]) {
+      for (const s of [level1, level10]) {
         for (const t of generateTrials(s, seed)) {
           for (const car of t.cars) {
             const collinear =
@@ -127,7 +127,7 @@ describe('generateTrials', () => {
 
   it('switches at roughly switchProbability', () => {
     for (const p of [0.1, 0.5]) {
-      const s = parseLevelSettings({ ...MIXED, switch_probability: p });
+      const s = parseLevelSettings({ ...LEVEL_10, switch_probability: p });
       let switches = 0;
       let total = 0;
       for (const seed of SEEDS) {
@@ -147,9 +147,9 @@ describe('generateTrials', () => {
     expect(drives.length / SEEDS.length).toBeLessThan(0.6);
   });
 
-  it('every car is identical and a target, even when mixed_traffic is set', () => {
+  it('every target car is identical, with no lit or targetIndex fields', () => {
     for (const seed of SEEDS) {
-      for (const s of [level1, mixed]) {
+      for (const s of [level1, level10]) {
         for (const t of generateTrials(s, seed)) {
           for (const car of t.cars) expect(car).toEqual(t.cars[0]);
           expect(t.cars[0]).not.toHaveProperty('lit');
@@ -159,10 +159,32 @@ describe('generateTrials', () => {
     }
   });
 
+  it('adds distractorCount grey cars that drive opposite to how the target cars move', () => {
+    for (const seed of SEEDS) {
+      for (const t of generateTrials(level10, seed)) {
+        expect(t.distractors).toHaveLength(4);
+        for (const d of t.distractors) {
+          expect(d.state).toBe('drive');
+          expect(d.facing).toBe(d.moving); // driving straight ahead
+          expect(d.moving).toBe(oppositeDirection(t.cars[0].moving));
+        }
+      }
+    }
+  });
+
+  it('has no distractors when distractorCount is 0, and they never change the answer', () => {
+    for (const seed of SEEDS) {
+      const without = generateTrials(level1, seed);
+      for (const t of without) expect(t.distractors).toEqual([]);
+      const withD = generateTrials(parseLevelSettings({ ...LEVEL_1, distractor_count: 3 }), seed);
+      expect(withD.map((t) => t.answer)).toEqual(without.map((t) => t.answer));
+    }
+  });
+
   it('is deterministic per seed and varies across seeds', () => {
     for (const seed of SEEDS) {
-      expect(generateTrials(mixed, seed)).toEqual(generateTrials(mixed, seed));
+      expect(generateTrials(level10, seed)).toEqual(generateTrials(level10, seed));
     }
-    expect(generateTrials(mixed, 1)).not.toEqual(generateTrials(mixed, 2));
+    expect(generateTrials(level10, 1)).not.toEqual(generateTrials(level10, 2));
   });
 });

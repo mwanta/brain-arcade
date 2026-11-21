@@ -1,5 +1,5 @@
 import { DIRECTIONS, oppositeDirection } from './directions.js';
-import { carFootprint, footprintsOverlap } from './footprint.js';
+import { carFootprint, footprintsOverlap, sweptOverlap } from './footprint.js';
 import { layoutCars, layoutClear } from './layout.js';
 import { createRng } from './random.js';
 
@@ -76,42 +76,69 @@ describe('layoutCars', () => {
 });
 
 describe('layoutClear', () => {
-  const COMBOS = [];
+  const PAD = 8;
+  // Every way a target group can look, with the grey group driving the other way on its axis.
+  const CASES = [];
   for (const facing of DIRECTIONS) {
-    for (const moving of DIRECTIONS) {
-      COMBOS.push([facing, moving, true]); // drifting: any direction, with a trail
-    }
-    COMBOS.push([facing, facing, false]); // driving forward
-    COMBOS.push([facing, oppositeDirection(facing), false]); // driving in reverse
+    for (const moving of DIRECTIONS) CASES.push([facing, moving, true]);
+    CASES.push([facing, facing, false]);
+    CASES.push([facing, oppositeDirection(facing), false]);
   }
 
-  test.each([8, 16, 24])(
-    'places %i cars with no overlapping bodies, beams, smoke or skid marks',
-    (count) => {
-      for (const [facing, moving, drifting] of COMBOS) {
-        const footprint = carFootprint(facing, moving, drifting);
-        for (const seed of [1, 2, 3]) {
-          const positions = layoutClear(count, createRng(seed), 600, footprint);
-          expect(positions).toHaveLength(count);
-          expectInside(positions, 600);
+  function groupsFor([facing, moving, drifting], cars, grey) {
+    const lane = oppositeDirection(moving);
+    return {
+      axis: moving === 'up' || moving === 'down' ? 'y' : 'x',
+      groups: [
+        { footprint: carFootprint(facing, moving, drifting), count: cars },
+        { footprint: carFootprint(lane, lane, false, false), count: grey },
+      ],
+    };
+  }
+
+  test.each([
+    [3, 2],
+    [5, 4],
+    [8, 6],
+    [10, 0],
+  ])('places %i cars and %i grey cars without overlaps, now or when they pass', (cars, grey) => {
+    for (const combo of CASES) {
+      const { groups, axis } = groupsFor(combo, cars, grey);
+      for (const seed of [1, 2, 3]) {
+        const placed = layoutClear(groups, createRng(seed), 600, axis);
+        expect(placed[0]).toHaveLength(cars);
+        expect(placed[1]).toHaveLength(grey);
+        placed.forEach((positions) => expectInside(positions, 600));
+
+        // Same group: footprints keep clear of each other.
+        placed.forEach((positions, g) => {
           for (let i = 0; i < positions.length; i++) {
             for (let j = i + 1; j < positions.length; j++) {
-              expect(footprintsOverlap(footprint, positions[i], positions[j], 8)).toBe(false);
+              const fp = groups[g].footprint;
+              expect(footprintsOverlap(fp, positions[i], fp, positions[j], PAD)).toBe(false);
             }
+          }
+        });
+        // Different groups drive past each other, so their lanes must never meet.
+        for (const a of placed[0]) {
+          for (const b of placed[1]) {
+            const [fa, fb] = [groups[0].footprint, groups[1].footprint];
+            expect(sweptOverlap(fa, a, fb, b, axis, PAD)).toBe(false);
           }
         }
       }
     }
-  );
+  });
 
   test('the same seed gives deep-equal positions', () => {
-    const footprint = carFootprint('up', 'left', true);
-    expect(layoutClear(12, createRng(9), 600, footprint)).toEqual(
-      layoutClear(12, createRng(9), 600, footprint)
+    const { groups, axis } = groupsFor(['up', 'left', true], 5, 4);
+    expect(layoutClear(groups, createRng(9), 600, axis)).toEqual(
+      layoutClear(groups, createRng(9), 600, axis)
     );
   });
 
   test('returns null when the cars cannot all fit', () => {
-    expect(layoutClear(200, createRng(1), 600, carFootprint('up', 'down', true))).toBeNull();
+    const { groups, axis } = groupsFor(['up', 'down', true], 200, 0);
+    expect(layoutClear(groups, createRng(1), 600, axis)).toBeNull();
   });
 });

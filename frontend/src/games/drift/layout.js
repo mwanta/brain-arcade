@@ -1,4 +1,4 @@
-import { footprintsOverlap } from './footprint.js';
+import { footprintsOverlap, sweptExtent } from './footprint.js';
 
 const EDGE = 50; // keep car centres this far from every board edge
 const GAPS = [70, 60, 56]; // preferred centre-to-centre spacing, relaxed if the board is crowded
@@ -60,27 +60,53 @@ export function layoutCars(carCount, rng, size = 400) {
 }
 
 /**
- * Start positions for identical cars such that no car's body, headlight beams, smoke or skid
- * marks come within a few units of another's. Cars all move together, so once they start clear
- * of each other they stay clear (a car that wraps does so off-screen).
+ * Start positions for groups of identical cars such that no car's body, headlight beams, smoke
+ * or skid marks come within a few units of another's, now or later.
  *
- * @param {number} carCount Number of cars to place.
+ * Cars in the same group drive together, so keeping their starting footprints apart is enough.
+ * Cars in different groups drive along the same axis in opposite directions and pass each
+ * other, so each group gets its own band across the road (in random order, wider for bigger
+ * groups) and its cars are placed only inside it. Their lanes then never meet.
+ *
+ * @param {Array<{ footprint: import('./footprint.js').Rect[], count: number }>} groups The
+ *   groups to place, each with one footprint (see carFootprint) shared by its cars.
  * @param {ReturnType<import('./random.js').createRng>} rng Seeded generator.
  * @param {number} size Board width and height.
- * @param {import('./footprint.js').Rect[]} footprint One car's footprint (see carFootprint).
- * @returns {Array<{ x: number, y: number }> | null} carCount positions, at least 50 from every
- *   edge, or null if they would not fit within a bounded number of tries.
+ * @param {'x' | 'y'} axis The axis every car drives along.
+ * @returns {Array<Array<{ x: number, y: number }>> | null} One list of positions per group, at
+ *   least 50 from every edge, or null if they would not all fit within a bounded number of tries.
  */
-export function layoutClear(carCount, rng, size, footprint) {
-  const positions = [];
+export function layoutClear(groups, rng, size, axis) {
+  const placed = groups.map(() => []);
+  const active = rng.shuffle(groups.map((g, i) => ({ g, i })).filter(({ g }) => g.count > 0));
+  const extents = active.map(({ g }) => sweptExtent(g.footprint, axis));
+  const total = active.reduce((sum, { g }) => sum + g.count, 0);
+  const needed = extents.reduce((sum, [lo, hi]) => sum + (hi - lo) + CLEAR_PAD, 0);
+  const slack = Math.max(0, size - needed);
+
   let tries = 0;
-  while (positions.length < carCount) {
-    if (tries++ >= MAX_CLEAR_TRIES) return null;
-    const p = {
-      x: EDGE + rng.next() * (size - 2 * EDGE),
-      y: EDGE + rng.next() * (size - 2 * EDGE),
-    };
-    if (!positions.some((q) => footprintsOverlap(footprint, p, q, CLEAR_PAD))) positions.push(p);
+  let start = 0; // where this group's band begins, across the road
+  for (const [k, { g, i }] of active.entries()) {
+    const [lo, hi] = extents[k];
+    const width = hi - lo + CLEAR_PAD + (slack * g.count) / total;
+    // Centres across the road that keep the whole footprint inside the band (and the car on the
+    // board).
+    const across = [
+      Math.max(EDGE, start - lo),
+      Math.min(size - EDGE, start + width - CLEAR_PAD - hi),
+    ];
+    start += width;
+    if (across[0] > across[1]) return null;
+
+    while (placed[i].length < g.count) {
+      if (tries++ >= MAX_CLEAR_TRIES) return null;
+      const along = EDGE + rng.next() * (size - 2 * EDGE);
+      const side = across[0] + rng.next() * (across[1] - across[0]);
+      const p = axis === 'y' ? { x: side, y: along } : { x: along, y: side };
+      if (!placed[i].some((q) => footprintsOverlap(g.footprint, p, g.footprint, q, CLEAR_PAD))) {
+        placed[i].push(p);
+      }
+    }
   }
-  return positions;
+  return placed;
 }

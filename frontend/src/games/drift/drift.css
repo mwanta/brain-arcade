@@ -9,12 +9,15 @@
   --drift-frame-shadow: #5c6078;
   --drift-car-body: #e04646;
   --drift-car-body-drift: #3d7be0;
+  --drift-car-body-distractor: #8d93a5;
+  --drift-car-stripe-distractor: #c5c9d6;
   --drift-car-stripe: #f6e7c1;
   --drift-wheel: #05050a;
   --drift-car-outline: #0b0b14;
   --drift-glass: #8fd3ff;
   --drift-rear-glass: #11172a;
   --drift-lamp-on: #fff27a;
+  --drift-lamp-off: #3a3a4a;
   --drift-beam: rgb(255 242 122 / 0.4);
   --drift-smoke: rgb(226 228 236 / 0.75);
   --drift-skid: rgb(8 8 14 / 0.9);
@@ -43,7 +46,8 @@
 .drift-board .drift-lane {
   stroke: var(--drift-lane);
   stroke-width: 4;
-  stroke-dasharray: 16 16;
+  /* 13 dashes of 24 with 12 gaps of 24 fill the 600-unit board exactly, ending in a dash. */
+  stroke-dasharray: 24 24;
   stroke-linecap: butt;
   fill: none;
 }
@@ -58,6 +62,14 @@
 
 .drift-board .drift-car-drifting .drift-body {
   fill: var(--drift-car-body-drift);
+}
+
+.drift-board .drift-car-distractor .drift-body {
+  fill: var(--drift-car-body-distractor);
+}
+
+.drift-board .drift-car-distractor .drift-stripe {
+  fill: var(--drift-car-stripe-distractor);
 }
 
 .drift-board .drift-stripe {
@@ -78,6 +90,10 @@
 
 .drift-board .drift-lamp {
   fill: var(--drift-lamp-on);
+}
+
+.drift-board .drift-car-distractor .drift-lamp {
+  fill: var(--drift-lamp-off);
 }
 
 .drift-board .drift-beam {

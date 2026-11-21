@@ -10,7 +10,7 @@ const settings = parseLevelSettings({
   car_count: 2,
   move_speed: 50,
   conflict_ratio: 0.2,
-  mixed_traffic: 0,
+  distractor_count: 0,
 });
 
 const trial = { answer: 'left' };

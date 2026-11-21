@@ -4,27 +4,37 @@ import { parseLevelSettings } from '../games/drift/settings.js';
 import { generateTrials } from '../games/drift/trials.js';
 
 // Temporary dev tool for checking the Drift visuals by eye. PR 6 replaces it.
-// (mixed_traffic is part of the level data but is ignored: every car is a target.)
+// The fixtures copy levels 1, 6 and 10 from backend/database/seed.sql.
 const LEVELS = {
   1: {
-    trial_count: 10,
+    trial_count: 20,
     time_limit: 3000,
-    max_errors: 3,
-    switch_probability: 0.1,
-    car_count: 2,
+    max_errors: 4,
+    switch_probability: 0.2,
+    car_count: 3,
+    move_speed: 60,
+    conflict_ratio: 0.3,
+    distractor_count: 0,
+  },
+  6: {
+    trial_count: 24,
+    time_limit: 2600,
+    max_errors: 4,
+    switch_probability: 0.4,
+    car_count: 3,
     move_speed: 50,
-    conflict_ratio: 0.2,
-    mixed_traffic: 0,
+    conflict_ratio: 0.5,
+    distractor_count: 2,
   },
   10: {
-    trial_count: 30,
-    time_limit: 1500,
+    trial_count: 32,
+    time_limit: 1800,
     max_errors: 2,
-    switch_probability: 0.5,
-    car_count: 6,
+    switch_probability: 0.6,
+    car_count: 8,
     move_speed: 130,
-    conflict_ratio: 0.75,
-    mixed_traffic: 1,
+    conflict_ratio: 0.7,
+    distractor_count: 6,
   },
 };
 
@@ -60,6 +70,7 @@ export default function DriftPreviewPage() {
           Level{' '}
           <select value={level} onChange={(e) => changeLevel(e.target.value)}>
             <option value="1">Level 1</option>
+            <option value="6">Level 6</option>
             <option value="10">Level 10</option>
           </select>
         </label>{' '}
@@ -106,6 +117,8 @@ export default function DriftPreviewPage() {
             ? 'driving (follow the moving direction)'
             : 'drifting (follow the facing direction)'}
           . Cars face {car.facing}, move {car.moving}. Answer: <strong>{trial.answer}</strong>.
+          {trial.distractors.length > 0 &&
+            ` ${trial.distractors.length} grey cars drive ${trial.distractors[0].moving} (ignore them).`}
         </p>
       )}
     </section>
