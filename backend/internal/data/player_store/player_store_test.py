@@ -63,6 +63,13 @@ def test_partial_update(store):
     assert updated.created_at == player.created_at and updated.updated_at >= player.updated_at
 
 
+def test_occupation_and_education_round_trip(store):
+    player = store.create(CreatePlayerRequest(_name(), BDAY, None, "healthcare", "associate"))
+    assert (player.occupation, player.education_level) == ("healthcare", "associate")
+    updated = store.update(player.player_id, UpdatePlayerRequest.from_json({"education_level": "bachelor"}))
+    assert (updated.occupation, updated.education_level) == ("healthcare", "bachelor")
+
+
 def test_update_can_clear_nullable_field(store):
     player = store.create(CreatePlayerRequest(_name(), BDAY, "female"))
     assert store.update(player.player_id, UpdatePlayerRequest.from_json({"gender": None})).gender is None

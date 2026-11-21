@@ -22,6 +22,8 @@ def test_create_returns_201_and_json(client):
         "username": "ada",
         "birthday": "1995-12-10",
         "gender": None,
+        "occupation": None,
+        "education_level": None,
         "created_at": "2026-01-01T12:00:00",
         "updated_at": "2026-01-01T12:00:00",
     }
@@ -48,3 +50,11 @@ def test_error_status_codes(client):
     assert client.post("/api/players", json=ADA).status_code == 409
     assert client.get("/api/players/99").status_code == 404
     assert client.post("/api/players", data="not json").status_code == 400
+
+
+def test_login(client):
+    created = client.post("/api/players", json=ADA).get_json()
+    res = client.post("/api/login", json={"username": "ada"})
+    assert res.status_code == 200 and res.get_json() == created
+    assert client.post("/api/login", json={"username": "nobody"}).status_code == 404
+    assert client.post("/api/login", json={}).status_code == 400

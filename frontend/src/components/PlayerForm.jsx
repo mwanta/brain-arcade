@@ -1,15 +1,19 @@
 import { useState } from 'react';
 import { GENDER_OPTIONS } from './genders.js';
+import { OCCUPATION_OPTIONS } from './occupations.js';
+import { EDUCATION_LEVEL_OPTIONS } from './educationLevels.js';
 
-const EMPTY = { username: '', birthday: '', gender: '' };
+const EMPTY = { username: '', birthday: '', gender: '', occupation: '', education_level: '' };
 
-// Controlled form used by both Create and Edit pages.
+// Controlled player form, used to create a player on the login page.
 // `onSubmit(values)` should return a promise; ApiError.details are shown per field.
 export default function PlayerForm({ initialValues = EMPTY, submitLabel, onSubmit }) {
   const [values, setValues] = useState({
     username: initialValues.username ?? '',
     birthday: initialValues.birthday ?? '',
     gender: initialValues.gender ?? '',
+    occupation: initialValues.occupation ?? '',
+    education_level: initialValues.education_level ?? '',
   });
   const [fieldErrors, setFieldErrors] = useState({});
   const [formError, setFormError] = useState(null);
@@ -27,6 +31,8 @@ export default function PlayerForm({ initialValues = EMPTY, submitLabel, onSubmi
         username: values.username.trim(),
         birthday: values.birthday || null,
         gender: values.gender || null,
+        occupation: values.occupation || null,
+        education_level: values.education_level || null,
       });
     } catch (err) {
       setFieldErrors(err.details || {});
@@ -79,6 +85,34 @@ export default function PlayerForm({ initialValues = EMPTY, submitLabel, onSubmi
           ))}
         </select>
         {fieldErrors.gender && <span className="field-error">{fieldErrors.gender}</span>}
+      </label>
+
+      <label>
+        Occupation
+        <select name="occupation" value={values.occupation} onChange={handleChange}>
+          <option value="">— Not specified —</option>
+          {OCCUPATION_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+        {fieldErrors.occupation && <span className="field-error">{fieldErrors.occupation}</span>}
+      </label>
+
+      <label>
+        Education level
+        <select name="education_level" value={values.education_level} onChange={handleChange}>
+          <option value="">— Not specified —</option>
+          {EDUCATION_LEVEL_OPTIONS.map((e) => (
+            <option key={e.value} value={e.value}>
+              {e.label}
+            </option>
+          ))}
+        </select>
+        {fieldErrors.education_level && (
+          <span className="field-error">{fieldErrors.education_level}</span>
+        )}
       </label>
 
       <button type="submit" disabled={submitting}>

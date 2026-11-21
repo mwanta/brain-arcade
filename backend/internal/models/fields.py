@@ -99,6 +99,32 @@ def datetime_field():
     return parse
 
 
+def choice_field(choices):
+    """One value from a fixed list."""
+
+    def parse(raw):
+        if raw not in choices:
+            raise ValueError(f"Must be one of: {', '.join(choices)}")
+        return raw
+
+    return parse
+
+
+def choice_list_field(choices):
+    """Comma-separated values from a fixed list, e.g. "student,retired" -> ("student", "retired")."""
+
+    def parse(raw):
+        if not isinstance(raw, str):
+            raise ValueError("Must be a comma-separated list")
+        values = tuple(dict.fromkeys(v.strip() for v in raw.split(",") if v.strip()))
+        bad = [v for v in values if v not in choices]
+        if bad or not values:
+            raise ValueError(f"Each value must be one of: {', '.join(choices)}")
+        return values
+
+    return parse
+
+
 def _check_range(value, min_value, max_value):
     if min_value is not None and value < min_value:
         raise ValueError(f"Must be at least {min_value}")

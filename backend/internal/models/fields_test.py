@@ -6,6 +6,8 @@ import pytest
 from internal.errors import ValidationError
 from internal.models.fields import (
     bool_field,
+    choice_field,
+    choice_list_field,
     date_field,
     datetime_field,
     int_field,
@@ -65,3 +67,18 @@ def test_output_formatting():
     assert iso(date(2026, 1, 1)) == "2026-01-01"
     assert number(Decimal("3.00")) == 3 and number(Decimal("1.25")) == 1.25
     assert number(None) is None
+
+
+def test_choice_field():
+    parse = choice_field(("a", "b"))
+    assert parse("a") == "a"
+    with pytest.raises(ValueError):
+        parse("c")
+
+
+def test_choice_list_field_splits_trims_and_dedupes():
+    parse = choice_list_field(("a", "b", "c"))
+    assert parse("a, c,a") == ("a", "c")
+    for bad in ("a,z", ",", 5):
+        with pytest.raises(ValueError):
+            parse(bad)

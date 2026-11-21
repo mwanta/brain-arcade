@@ -3,12 +3,27 @@ from datetime import date, datetime
 import pytest
 
 from internal.errors import ValidationError
-from internal.models.player import CreatePlayerRequest, Player, UpdatePlayerRequest
+from internal.models.player import CreatePlayerRequest, LoginRequest, Player, UpdatePlayerRequest
 
 
 def test_create_request_parses_valid_payload():
     req = CreatePlayerRequest.from_json({"username": " ada ", "birthday": "1995-12-10", "gender": "female"})
     assert req == CreatePlayerRequest("ada", date(1995, 12, 10), "female")
+
+
+def test_create_request_parses_occupation_and_education():
+    req = CreatePlayerRequest.from_json(
+        {"username": "ada", "birthday": "1995-12-10", "occupation": "student", "education_level": "bachelor"}
+    )
+    assert (req.occupation, req.education_level) == ("student", "bachelor")
+
+
+def test_create_request_rejects_unknown_occupation_and_education():
+    with pytest.raises(ValidationError) as exc:
+        CreatePlayerRequest.from_json(
+            {"username": "ada", "birthday": "1995-12-10", "occupation": "pirate", "education_level": "phd"}
+        )
+    assert set(exc.value.details) == {"occupation", "education_level"}
 
 
 def test_create_request_gender_is_optional():
@@ -59,13 +74,29 @@ def test_update_request_rejects_server_assigned_fields(field):
 
 def test_player_to_json():
     player = Player(
-        1, "ada", date(1995, 12, 10), None, datetime(2026, 1, 1, 12, 0), datetime(2026, 1, 2, 9, 30)
+        1,
+        "ada",
+        date(1995, 12, 10),
+        None,
+        "technology",
+        "master",
+        datetime(2026, 1, 1, 12, 0),
+        datetime(2026, 1, 2, 9, 30),
     )
     assert player.to_json() == {
         "player_id": 1,
         "username": "ada",
         "birthday": "1995-12-10",
         "gender": None,
+        "occupation": "technology",
+        "education_level": "master",
         "created_at": "2026-01-01T12:00:00",
         "updated_at": "2026-01-02T09:30:00",
     }
+
+
+def test_login_request_trims_and_requires_username():
+    assert LoginRequest.from_json({"username": "  ada "}) == LoginRequest("ada")
+    for payload in ({}, {"username": "  "}, {"username": 5}, None):
+        with pytest.raises(ValidationError):
+            LoginRequest.from_json(payload)

@@ -6,7 +6,7 @@ from internal.data.player_store.fake_player_store import FakePlayerStore
 from internal.data.repository import Repository
 from internal.errors import ConflictError, NotFoundError
 from internal.handlers.player_handler import PlayerHandler
-from internal.models.player import CreatePlayerRequest, UpdatePlayerRequest
+from internal.models.player import CreatePlayerRequest, LoginRequest, UpdatePlayerRequest
 
 BDAY = date(1995, 12, 10)
 
@@ -56,3 +56,10 @@ def test_missing_player_raises_not_found(handler):
         handler.get_player(99)
     with pytest.raises(NotFoundError):
         handler.update_player(99, UpdatePlayerRequest.from_json({"gender": "male"}))
+
+
+def test_login_finds_player_by_username(handler):
+    created = handler.create_player(CreatePlayerRequest("ada", BDAY))
+    assert handler.login(LoginRequest("ada")) == created
+    with pytest.raises(NotFoundError):
+        handler.login(LoginRequest("nobody"))
