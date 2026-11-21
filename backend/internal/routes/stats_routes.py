@@ -1,11 +1,12 @@
 """HTTP routes for player score summaries.
 
-All accept optional ?from=YYYY-MM-DD&to=YYYY-MM-DD&game_id=N.
+All accept optional ?from=YYYY-MM-DD&to=YYYY-MM-DD&game_id=N. The /cohort/* routes also
+accept the cohort filters documented on CohortQuery (gender, occupation, match, ...).
 """
 
 from flask import Blueprint, jsonify, request
 
-from internal.models.stats import StatsQuery
+from internal.models.stats import CohortQuery, StatsQuery
 
 
 def create_stats_routes(stats_handler):
@@ -26,4 +27,41 @@ def create_stats_routes(stats_handler):
         query = StatsQuery.from_args(request.args.to_dict())
         return jsonify([c.to_json() for c in stats_handler.age_group_comparison(player_id, query)])
 
+    # ---- cohort queries: date/game filters plus CohortQuery filters ----
+
+    @bp.get("/cohort/comparison")
+    def cohort_comparison(player_id):
+        query, cohort = _cohort_args()
+        return jsonify([r.to_json() for r in stats_handler.cohort_comparison(player_id, query, cohort)])
+
+    @bp.get("/cohort/distribution")
+    def cohort_distribution(player_id):
+        query, cohort = _cohort_args()
+        return jsonify([r.to_json() for r in stats_handler.cohort_distribution(player_id, query, cohort)])
+
+    @bp.get("/cohort/breakdown")
+    def demographic_breakdown(player_id):
+        query, cohort = _cohort_args()
+        return jsonify([r.to_json() for r in stats_handler.demographic_breakdown(player_id, query, cohort)])
+
+    @bp.get("/cohort/learning-curve")
+    def learning_curve(player_id):
+        query, cohort = _cohort_args()
+        return jsonify([r.to_json() for r in stats_handler.learning_curve(player_id, query, cohort)])
+
+    @bp.get("/cohort/conditions")
+    def condition_impact(player_id):
+        query, cohort = _cohort_args()
+        return jsonify([r.to_json() for r in stats_handler.condition_impact(player_id, query, cohort)])
+
+    @bp.get("/cohort/levels")
+    def level_performance(player_id):
+        query, cohort = _cohort_args()
+        return jsonify([r.to_json() for r in stats_handler.level_performance(player_id, query, cohort)])
+
     return bp
+
+
+def _cohort_args():
+    args = request.args.to_dict()
+    return StatsQuery.from_args(args), CohortQuery.from_args(args)

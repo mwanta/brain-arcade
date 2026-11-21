@@ -13,7 +13,30 @@ from typing import Optional
 from internal.errors import ValidationError
 
 GENDERS = ("female", "male", "non_binary", "other", "prefer_not_to_say")
-UPDATABLE_FIELDS = ("username", "birthday", "gender")
+OCCUPATIONS = (
+    "student",
+    "technology",
+    "healthcare",
+    "education",
+    "business",
+    "trades",
+    "arts_media",
+    "service",
+    "retired",
+    "unemployed",
+    "other",
+)
+# Lowest to highest, matching the ENUM order in schema.sql (the stats queries rely on it).
+EDUCATION_LEVELS = (
+    "less_than_high_school",
+    "high_school",
+    "some_college",
+    "associate",
+    "bachelor",
+    "master",
+    "doctorate",
+)
+UPDATABLE_FIELDS = ("username", "birthday", "gender", "occupation", "education_level")
 _SERVER_ASSIGNED = ("player_id", "created_at", "updated_at")
 _USERNAME_RE = re.compile(r"^[A-Za-z0-9_.-]{3,50}$")
 
@@ -24,6 +47,8 @@ class Player:
     username: str
     birthday: date
     gender: Optional[str]
+    occupation: Optional[str]
+    education_level: Optional[str]
     created_at: datetime
     updated_at: datetime
 
@@ -33,6 +58,8 @@ class Player:
             "username": self.username,
             "birthday": self.birthday.isoformat(),
             "gender": self.gender,
+            "occupation": self.occupation,
+            "education_level": self.education_level,
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
         }
@@ -43,6 +70,8 @@ class CreatePlayerRequest:
     username: str
     birthday: date
     gender: Optional[str] = None
+    occupation: Optional[str] = None
+    education_level: Optional[str] = None
 
     @classmethod
     def from_json(cls, payload):
@@ -56,6 +85,8 @@ class UpdatePlayerRequest:
     username: Optional[str] = None
     birthday: Optional[date] = None
     gender: Optional[str] = None
+    occupation: Optional[str] = None
+    education_level: Optional[str] = None
     fields_set: frozenset = field(default_factory=frozenset)
 
     @classmethod
@@ -81,6 +112,8 @@ def _parse(payload, required):
         ("username", _parse_username),
         ("birthday", _parse_birthday),
         ("gender", _parse_gender),
+        ("occupation", _parse_occupation),
+        ("education_level", _parse_education_level),
     ):
         if required or name in payload:
             try:
@@ -117,8 +150,21 @@ def _parse_birthday(raw):
 
 
 def _parse_gender(raw):
+    return _parse_choice(raw, GENDERS)
+
+
+def _parse_occupation(raw):
+    return _parse_choice(raw, OCCUPATIONS)
+
+
+def _parse_education_level(raw):
+    return _parse_choice(raw, EDUCATION_LEVELS)
+
+
+def _parse_choice(raw, choices):
+    """Optional value from a fixed list (an ENUM column); empty means NULL."""
     if raw in (None, ""):
         return None
-    if raw not in GENDERS:
-        raise ValueError(f"Must be one of: {', '.join(GENDERS)}")
+    if raw not in choices:
+        raise ValueError(f"Must be one of: {', '.join(choices)}")
     return raw

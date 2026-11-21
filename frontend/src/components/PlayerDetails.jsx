@@ -1,4 +1,6 @@
 import { genderLabel } from './genders.js';
+import { occupationLabel } from './occupations.js';
+import { educationLevelLabel } from './educationLevels.js';
 
 export default function PlayerDetails({ player }) {
   return (
@@ -11,6 +13,10 @@ export default function PlayerDetails({ player }) {
       <dd>{player.birthday}</dd>
       <dt>Gender</dt>
       <dd>{genderLabel(player.gender)}</dd>
+      <dt>Occupation</dt>
+      <dd>{occupationLabel(player.occupation)}</dd>
+      <dt>Education level</dt>
+      <dd>{educationLevelLabel(player.education_level)}</dd>
       <dt>Created at</dt>
       <dd>{new Date(player.created_at).toLocaleString()}</dd>
       <dt>Updated at</dt>

@@ -32,7 +32,11 @@ def db():
 def make_player(db):
     store = PlayerStore(db)
 
-    def make(birthday=date(1995, 1, 1)):
-        return store.create(CreatePlayerRequest(f"zz_test_{uuid.uuid4().hex[:10]}", birthday))
+    def make(birthday=date(1995, 1, 1), gender=None, occupation=None, education_level=None):
+        return store.create(
+            CreatePlayerRequest(
+                f"zz_test_{uuid.uuid4().hex[:10]}", birthday, gender, occupation, education_level
+            )
+        )
 
     return make

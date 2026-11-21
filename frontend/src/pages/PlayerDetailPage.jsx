@@ -18,9 +18,14 @@ export default function PlayerDetailPage() {
       <div className="page-header">
         <h1>{player ? player.username : 'Player'}</h1>
         {player && (
-          <Link className="button" to={`/players/${playerId}/edit`}>
-            Edit
-          </Link>
+          <div className="button-row">
+            <Link className="button" to={`/players/${playerId}/stats`}>
+              Stats
+            </Link>
+            <Link className="button secondary" to={`/players/${playerId}/edit`}>
+              Edit
+            </Link>
+          </div>
         )}
       </div>
       <ErrorMessage error={error} />

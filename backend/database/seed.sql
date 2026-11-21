@@ -1,12 +1,12 @@
 USE brain_arcade;
 
 -- ---- players ----------------------------------------------------------------
-INSERT INTO player (username, birthday, gender) VALUES
-    ('ada_lovelace',  '1995-12-10', 'female'),
-    ('alan_turing',   '1992-06-23', 'male'),
-    ('grace_hopper',  '1990-12-09', 'female'),
-    ('sam_rivera',    '2001-03-15', 'non_binary'),
-    ('casual_player', '2006-05-10', 'prefer_not_to_say');
+INSERT INTO player (username, birthday, gender, occupation, education_level) VALUES
+    ('ada_lovelace',  '1995-12-10', 'female',            'technology', 'master'),
+    ('alan_turing',   '1992-06-23', 'male',              'education',  'doctorate'),
+    ('grace_hopper',  '1990-12-09', 'female',            'technology', 'doctorate'),
+    ('sam_rivera',    '2001-03-15', 'non_binary',        'student',    'some_college'),
+    ('casual_player', '2006-05-10', 'prefer_not_to_say', NULL,         NULL);
 
 -- ---- game catalog -----------------------------------------------------------
 INSERT INTO cognitive_domain (domain_id, name, description) VALUES
@@ -103,3 +103,126 @@ INSERT INTO level_attempt (play_id, level_id, started_at, passed, duration_ms, e
     (4, 8, '2026-11-01 12:11:15.000', TRUE,  1100, 1),
     -- play 5: in progress, failed level 1 so far -> score 0
     (5, 4, '2026-11-03 08:01:05.000', FALSE, 5000, 1);
+
+-- ============================================================================
+-- Simulated players, so the cohort stats queries have enough data to compare.
+-- Arithmetic on the row number (MOD, DIV) stands in for randomness, so every
+-- rebuild produces the same data. IDs are derived rather than auto-assigned:
+--   player_id  = 100 + i                          (101-180)
+--   session_id = player_id * 100 + session number (10101-18008)
+--   play_id    = session_id * 10 + game_id
+-- Birthdays fall between 1953 and 2008, so no simulated player is in the
+-- 90-99 age group that the stats store tests use.
+-- ============================================================================
+
+INSERT INTO player (player_id, username, birthday, gender, occupation, education_level)
+WITH RECURSIVE n AS (
+    SELECT 1 AS i UNION ALL SELECT i + 1 FROM n WHERE i < 80
+),
+aged AS (
+    SELECT i, birthday, TIMESTAMPDIFF(YEAR, birthday, '2026-11-01') AS age
+    FROM (SELECT i, DATE_SUB('2008-06-01', INTERVAL MOD(i * 2477, 20000) DAY) AS birthday FROM n) b
+)
+SELECT 100 + i,
+       CONCAT('sim_player_', LPAD(i, 3, '0')),
+       birthday,
+       ELT(1 + MOD(i * 7 + i DIV 9, 9),
+           'female', 'male', 'female', 'male', 'female', 'male', 'non_binary', 'other', 'prefer_not_to_say'),
+       CASE
+           WHEN age < 23 AND MOD(i, 4) <> 0 THEN 'student'
+           WHEN age >= 65 AND MOD(i, 3) <> 0 THEN 'retired'
+           ELSE ELT(1 + MOD(i * 5 + i DIV 3, 9), 'technology', 'healthcare', 'education', 'business',
+                    'trades', 'arts_media', 'service', 'unemployed', 'other')
+       END,
+       CASE
+           WHEN MOD(i, 13) = 0 THEN NULL
+           WHEN age < 20 THEN ELT(1 + MOD(i, 2), 'high_school', 'less_than_high_school')
+           WHEN age < 23 THEN ELT(1 + MOD(i, 3), 'high_school', 'some_college', 'some_college')
+           ELSE ELT(1 + MOD(i * 3 + i DIV 4, 7), 'less_than_high_school', 'high_school', 'some_college',
+                    'associate', 'bachelor', 'master', 'doctorate')
+       END
+FROM aged;
+
+-- 2 to 8 sessions each, spread over September and October 2026.
+INSERT INTO session (session_id, player_id, started_at, ended_at)
+SELECT session_id, player_id, started_at, started_at + INTERVAL 35 MINUTE
+FROM (
+    WITH RECURSIVE n AS (SELECT 1 AS s UNION ALL SELECT s + 1 FROM n WHERE s < 8)
+    SELECT p.player_id * 100 + n.s AS session_id,
+           p.player_id,
+           TIMESTAMP('2026-09-01 07:00:00')
+               + INTERVAL (n.s * 6 + MOD(p.player_id, 5)) DAY
+               + INTERVAL MOD(p.player_id * 13 + n.s * 7, 15) HOUR AS started_at
+    FROM player p
+    JOIN n ON n.s <= 2 + MOD(p.player_id * 3, 7)
+    WHERE p.player_id > 100
+) planned;
+
+-- About 4 in 5 sessions start with a check-in.
+INSERT INTO check_in (session_id, hours_slept, caffeine_drinks, stress_level, exercised_today)
+SELECT session_id,
+       4.5 + MOD(session_id * 7, 9) * 0.5,
+       MOD(session_id * 3, 5),
+       1 + MOD(session_id * 11 + session_id DIV 100, 5),
+       MOD(session_id + session_id DIV 100, 3) = 0
+FROM session
+WHERE session_id > 10000 AND MOD(session_id * 7 + session_id DIV 100, 5) <> 0;
+
+-- Most sessions play two or three of the four games.
+INSERT INTO game_play (play_id, session_id, game_id, started_at, finished_at)
+SELECT se.session_id * 10 + g.game_id,
+       se.session_id,
+       g.game_id,
+       se.started_at + INTERVAL (g.game_id * 6) MINUTE,
+       se.started_at + INTERVAL (g.game_id * 6 + 5) MINUTE
+FROM session se
+CROSS JOIN game g
+WHERE se.session_id > 10000
+  AND MOD(se.session_id + g.game_id * (1 + MOD(se.player_id, 3)), 4) <> 0;
+
+-- Each play passes levels 1..score and fails the next one (if there is one).
+-- The score comes from a per-player skill plus education, practice (later
+-- sessions do better), the check-in (sleep, stress, exercise), a decline with
+-- age on the processing-speed game, and some noise.
+INSERT INTO level_attempt (play_id, level_id, started_at, passed, duration_ms, error_count)
+WITH play_score AS (
+    SELECT gp.play_id, gp.game_id, gp.started_at, skill,
+           LEAST(gm.max_level, GREATEST(0, FLOOR((gm.max_level + 1) * (
+                 0.15
+               + 0.45 * skill
+               + 0.03 * COALESCE(p.education_level + 0, 3)
+               - IF(gp.game_id = 3, 0.004 * GREATEST(0, TIMESTAMPDIFF(YEAR, p.birthday, '2026-11-01') - 30), 0)
+               + 0.03 * MOD(se.session_id, 100)
+               + 0.04 * COALESCE(ci.hours_slept - 7, 0)
+               - 0.03 * COALESCE(ci.stress_level - 3, 0)
+               + 0.03 * COALESCE(ci.exercised_today, 0)
+               + (MOD(gp.play_id * 31, 21) - 10) / 100
+           )))) AS score
+    FROM game_play gp
+    JOIN session se ON se.session_id = gp.session_id
+    JOIN (SELECT player_id, birthday, education_level, MOD(player_id * 53, 100) / 100 AS skill FROM player) p
+        ON p.player_id = se.player_id
+    LEFT JOIN check_in ci ON ci.session_id = se.session_id
+    JOIN (SELECT game_id, MAX(level_number) AS max_level FROM level GROUP BY game_id) gm
+        ON gm.game_id = gp.game_id
+    WHERE gp.play_id > 100000
+)
+SELECT ps.play_id,
+       l.level_id,
+       ps.started_at + INTERVAL (l.level_number * 20) SECOND,
+       l.level_number <= ps.score,
+       CASE
+           WHEN l.level_number <= ps.score
+               THEN ROUND(time_limit.setting_value
+                          * LEAST(0.95, 0.45 + 0.4 * (1 - ps.skill) + MOD(ps.play_id * 7 + l.level_number * 13, 20) / 100))
+           WHEN MOD(ps.play_id, 2) = 0 THEN time_limit.setting_value  -- ran out of time
+           ELSE ROUND(time_limit.setting_value * 0.8)                -- too many errors
+       END,
+       CASE
+           WHEN l.level_number <= ps.score THEN MOD(ps.play_id + l.level_number, max_errors.setting_value + 1)
+           ELSE max_errors.setting_value + 1 + MOD(ps.play_id, 2)
+       END
+FROM play_score ps
+JOIN level l ON l.game_id = ps.game_id AND l.level_number <= ps.score + 1
+JOIN level_setting time_limit ON time_limit.level_id = l.level_id AND time_limit.setting_type_id = 2
+JOIN level_setting max_errors ON max_errors.level_id = l.level_id AND max_errors.setting_type_id = 4;

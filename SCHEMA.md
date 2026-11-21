@@ -1,6 +1,6 @@
 # Schema
 
-The `brain_arcade` MySQL database, as defined in [backend/database/schema.sql](backend/database/schema.sql). Ten tables in 3NF (and BCNF), one view, four triggers.
+The `brain_arcade` MySQL database, as defined in [backend/database/schema.sql](backend/database/schema.sql). Ten tables in 3NF (and BCNF), five views, four triggers, two functions and one stored procedure.
 
 > Keep this file in sync with `schema.sql`. GitHub and VS Code (with a Mermaid extension) render the diagram below.
 
@@ -22,6 +22,8 @@ erDiagram
         varchar username UK
         date birthday
         enum gender "nullable"
+        enum occupation "nullable"
+        enum education_level "nullable, ordered low to high"
         datetime created_at
         datetime updated_at "auto-updates"
     }
@@ -115,11 +117,29 @@ Data a player generates (sessions, check-ins, plays, attempts) is deleted with t
 
 - **Level difficulty and pass rules live in `level_setting`.** Each level's `sequence_length`, `time_limit`, `max_errors` and so on are rows, not columns, so new kinds of settings need no schema change.
 - **`level_attempt.passed` is stored, not derived.** It's the outcome judged against the level's settings at play time, so changing a level's settings later doesn't rewrite history.
+- **`player.education_level` is an ordered ENUM.** Its values run from `less_than_high_school` to `doctorate`, so `education_level + 0` (the ENUM index, 1-7) supports range filters such as "bachelor's or higher". Add new values in rank order, not at the end. `occupation` is a plain ENUM with no order.
 - **`game_play` has no `player_id`.** The player is reached through `session`; storing it again would break 3NF.
 
-## View: `game_play_score`
+## Views
 
-One row per game play: `play_id, session_id, game_id, score`. The score is the highest `level_number` passed in that play, or 0 if none was passed. It's computed, never stored.
+| View | One row per | Columns |
+|---|---|---|
+| `game_play_score` | game play | `play_id, session_id, game_id, score`: the highest `level_number` passed, or 0. Computed, never stored. |
+| `player_profile` | player | `player_id, gender, occupation, education_level, age, age_group` (e.g. `30-39`, by current age) |
+| `finished_play` | finished game play | `player_id, play_id, session_id, game_id, started_at, score, completion` (`score` / the game's top level, 0-1, so different games can be averaged together) |
+| `level_rule` | level | `level_id, time_limit_ms, max_errors`, pivoted out of `level_setting` |
+| `check_in_factor` | check-in and factor | `session_id, factor, bucket, bucket_order`, e.g. `sleep / under_6h / 1`. Factors are `sleep`, `caffeine`, `stress` and `exercise`. |
+
+## Functions and procedures (cohort stats)
+
+- **`in_period(t, start, end)`** returns TRUE if `t` is in `[start, end)`. A NULL bound means that side is open.
+- **`profile_attribute(player_id, attribute)`** returns one of the player's `age_group`, `gender`, `occupation` or `education_level`, chosen by name, or `'unspecified'`.
+- **`load_cohort(player_id, game_id, start, end, gender, occupation, education_level, education_min, education_max, age_min, age_max, match, min_plays)`** picks the players to compare a player with, and fills three temporary tables that only the current connection can see:
+  - `cohort_member (player_id, is_me)`: the player, plus everyone who passes every active filter. A NULL filter (or `''` for `match`) is switched off.
+  - `cohort_play`: members' finished plays in the period, on games the player played then. Same columns as `finished_play`, plus `is_me`.
+  - `cohort_player_game (player_id, game_id, is_me, plays, avg_score, best_score)`: members with fewer than `min_plays` plays of a game are dropped from that game.
+
+  The `stats_store/sql/` cohort queries (`cohort_comparison`, `cohort_distribution`, `demographic_breakdown`, `learning_curve`, `condition_impact` and `level_performance`) read these tables, so `StatsStore` calls `load_cohort` first on the same connection. MySQL can't open a temporary table twice in one query, so each of those queries reads each temporary table only once.
 
 ## Triggers
 
