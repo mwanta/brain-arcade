@@ -1,9 +1,17 @@
 import { describe, expect, it } from '@jest/globals';
-import { DIRECTIONS, otherDirections } from './directions.js';
+import { DIRECTIONS, oppositeDirection, otherDirections } from './directions.js';
 
 describe('directions', () => {
   it('lists the four directions', () => {
     expect(DIRECTIONS).toEqual(['up', 'down', 'left', 'right']);
+  });
+
+  it('oppositeDirection flips each direction and rejects unknown ones', () => {
+    expect(oppositeDirection('up')).toBe('down');
+    expect(oppositeDirection('down')).toBe('up');
+    expect(oppositeDirection('left')).toBe('right');
+    expect(oppositeDirection('right')).toBe('left');
+    expect(() => oppositeDirection('north')).toThrow();
   });
 
   it('otherDirections returns the other three', () => {

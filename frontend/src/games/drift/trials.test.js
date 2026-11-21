@@ -1,4 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
+import { oppositeDirection } from './directions.js';
 import { parseLevelSettings } from './settings.js';
 import { generateTrials } from './trials.js';
 
@@ -26,10 +27,6 @@ const MIXED = {
 const SEEDS = Array.from({ length: 200 }, (_, i) => i + 1);
 const level1 = parseLevelSettings(LEVEL_1);
 const mixed = parseLevelSettings(MIXED);
-
-function answerOf(car) {
-  return car.state === 'drive' ? car.facing : car.moving;
-}
 
 describe('generateTrials', () => {
   it('returns trialCount trials with 0-based indexes and carCount cars', () => {
@@ -64,8 +61,8 @@ describe('generateTrials', () => {
     for (const seed of SEEDS) {
       for (const s of [level1, mixed]) {
         for (const t of generateTrials(s, seed)) {
-          const lit = t.cars[t.targetIndex];
-          expect(lit.facing === lit.moving).toBe(!t.conflict);
+          const car = t.cars[0];
+          expect(car.facing === car.moving).toBe(!t.conflict);
         }
       }
     }
@@ -75,9 +72,37 @@ describe('generateTrials', () => {
     for (const seed of SEEDS) {
       for (const s of [level1, mixed]) {
         for (const t of generateTrials(s, seed)) {
-          const lit = t.cars[t.targetIndex];
-          expect(lit.state).toBe(t.rule);
-          expect(t.answer).toBe(t.rule === 'drive' ? lit.facing : lit.moving);
+          const car = t.cars[0];
+          expect(car.state).toBe(t.rule);
+          expect(t.answer).toBe(t.rule === 'drive' ? car.moving : car.facing);
+        }
+      }
+    }
+  });
+
+  it('driving cars only go forward or in reverse; drifting cars can slide sideways', () => {
+    let slid = 0;
+    for (const seed of SEEDS) {
+      for (const s of [level1, mixed]) {
+        for (const t of generateTrials(s, seed)) {
+          for (const car of t.cars) {
+            const collinear =
+              car.moving === car.facing || car.moving === oppositeDirection(car.facing);
+            if (car.state === 'drive') expect(collinear).toBe(true);
+            else if (!collinear) slid++;
+          }
+        }
+      }
+    }
+    expect(slid).toBeGreaterThan(0);
+  });
+
+  it('a conflict on a driving trial means reversing', () => {
+    for (const seed of SEEDS) {
+      for (const t of generateTrials(level1, seed)) {
+        const car = t.cars[0];
+        if (t.rule === 'drive' && t.conflict) {
+          expect(car.moving).toBe(oppositeDirection(car.facing));
         }
       }
     }
@@ -122,39 +147,14 @@ describe('generateTrials', () => {
     expect(drives.length / SEEDS.length).toBeLessThan(0.6);
   });
 
-  it('not mixed: all cars are identical, lit, and the target is 0', () => {
+  it('every car is identical and a target, even when mixed_traffic is set', () => {
     for (const seed of SEEDS) {
-      for (const t of generateTrials(level1, seed)) {
-        expect(t.targetIndex).toBe(0);
-        for (const car of t.cars) {
-          expect(car).toEqual(t.cars[0]);
-          expect(car.lit).toBe(true);
+      for (const s of [level1, mixed]) {
+        for (const t of generateTrials(s, seed)) {
+          for (const car of t.cars) expect(car).toEqual(t.cars[0]);
+          expect(t.cars[0]).not.toHaveProperty('lit');
+          expect(t).not.toHaveProperty('targetIndex');
         }
-      }
-    }
-  });
-
-  it('mixed: one lit car at targetIndex and a distractor that disagrees', () => {
-    const seenTargets = new Set();
-    for (const seed of SEEDS) {
-      for (const t of generateTrials(mixed, seed)) {
-        seenTargets.add(t.targetIndex);
-        const lit = t.cars.filter((c) => c.lit);
-        expect(lit).toHaveLength(1);
-        expect(t.cars[t.targetIndex].lit).toBe(true);
-        const distractors = t.cars.filter((_, i) => i !== t.targetIndex);
-        expect(distractors.some((c) => answerOf(c) !== t.answer)).toBe(true);
-      }
-    }
-    expect(seenTargets.size).toBe(mixed.carCount);
-  });
-
-  it('mixed with two cars still has a disagreeing distractor', () => {
-    const s = parseLevelSettings({ ...MIXED, car_count: 2 });
-    for (const seed of SEEDS) {
-      for (const t of generateTrials(s, seed)) {
-        const other = t.cars[1 - t.targetIndex];
-        expect(answerOf(other)).not.toBe(t.answer);
       }
     }
   });

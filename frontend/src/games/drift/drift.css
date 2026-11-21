@@ -1,0 +1,109 @@
+/* Drift board, pixel-art style. Every colour is a custom property scoped to .drift-board.
+   Drifting cars are blue and driving cars red, but smoke and skid marks also mark a drift, so
+   the cue never relies on colour alone. */
+.drift-board {
+  --drift-asphalt: #2d3142;
+  --drift-speckle: #383d52;
+  --drift-lane: rgb(255 209 102 / 0.4);
+  --drift-frame: #0b0b14;
+  --drift-frame-shadow: #5c6078;
+  --drift-car-body: #e04646;
+  --drift-car-body-drift: #3d7be0;
+  --drift-car-stripe: #f6e7c1;
+  --drift-wheel: #05050a;
+  --drift-car-outline: #0b0b14;
+  --drift-glass: #8fd3ff;
+  --drift-rear-glass: #11172a;
+  --drift-lamp-on: #fff27a;
+  --drift-beam: rgb(255 242 122 / 0.4);
+  --drift-smoke: rgb(226 228 236 / 0.75);
+  --drift-skid: rgb(8 8 14 / 0.9);
+
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 720px;
+  aspect-ratio: 1 / 1;
+  height: auto;
+  margin: 0 auto;
+  border: 4px solid var(--drift-frame);
+  border-radius: 0;
+  box-shadow: 6px 6px 0 var(--drift-frame-shadow);
+  overflow: hidden;
+}
+
+.drift-board .drift-road {
+  fill: var(--drift-asphalt);
+}
+
+.drift-board .drift-speckle {
+  fill: var(--drift-speckle);
+}
+
+.drift-board .drift-lane {
+  stroke: var(--drift-lane);
+  stroke-width: 4;
+  stroke-dasharray: 16 16;
+  stroke-linecap: butt;
+  fill: none;
+}
+
+.drift-board .drift-outline {
+  fill: var(--drift-car-outline);
+}
+
+.drift-board .drift-body {
+  fill: var(--drift-car-body);
+}
+
+.drift-board .drift-car-drifting .drift-body {
+  fill: var(--drift-car-body-drift);
+}
+
+.drift-board .drift-stripe {
+  fill: var(--drift-car-stripe);
+}
+
+.drift-board .drift-wheel {
+  fill: var(--drift-wheel);
+}
+
+.drift-board .drift-windshield {
+  fill: var(--drift-glass);
+}
+
+.drift-board .drift-rear-window {
+  fill: var(--drift-rear-glass);
+}
+
+.drift-board .drift-lamp {
+  fill: var(--drift-lamp-on);
+}
+
+.drift-board .drift-beam {
+  fill: var(--drift-beam);
+}
+
+.drift-board .drift-skid {
+  fill: var(--drift-skid);
+}
+
+.drift-board .drift-smoke {
+  fill: var(--drift-smoke);
+  animation: drift-smoke-pulse 1s steps(2, jump-none) infinite;
+}
+
+@keyframes drift-smoke-pulse {
+  0% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drift-board .drift-smoke {
+    animation: none;
+  }
+}
