@@ -123,11 +123,12 @@ export function createPlayRecorder(api, { playerId, gameId, sessionId = null }) 
     },
 
     // Best effort: ends an owned session but does not finish the play, so it is not in stats.
-    async abandon() {
+    // With `keepalive` (for a closing page) the request is allowed to outlive the page.
+    async abandon({ keepalive = false } = {}) {
       if (status === 'saved' || sessionEnded || !owns || sid === null) return;
       sessionEnded = true;
       try {
-        await api.endSession(sid);
+        await (keepalive ? api.endSession(sid, { keepalive: true }) : api.endSession(sid));
       } catch {
         // Nothing useful to do: the player is leaving.
       }

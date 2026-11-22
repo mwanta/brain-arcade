@@ -8,7 +8,7 @@ const STATES = ['drive', 'drift'];
  * A driving car only goes forward or in reverse, so its moving direction is its facing or the
  * opposite; a drifting car (smoke and skid marks) can slide any way.
  */
-function answerFor(car) {
+export function answerFor(car) {
   return car.state === 'drive' ? car.moving : car.facing;
 }
 

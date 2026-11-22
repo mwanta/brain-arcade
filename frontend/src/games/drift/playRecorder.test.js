@@ -242,3 +242,29 @@ describe('subscribe', () => {
     expect(seen).toEqual(['saving', 'error', 'saving', 'saved']);
   });
 });
+
+describe('abandon with keepalive', () => {
+  it('passes keepalive to endSession so the request outlives a closing page', async () => {
+    const fake = fakeApi();
+    const rec = createPlayRecorder(fake.api, { playerId: 1, gameId: 4 });
+    await rec.begin();
+    await rec.abandon({ keepalive: true });
+    expect(fake.calls.at(-1)).toEqual(['endSession', 11, { keepalive: true }]);
+  });
+
+  it('starts the request before the first await, as a closing page needs', async () => {
+    let called = false;
+    const api = {
+      startSession: async () => ({ session_id: 5 }),
+      startGamePlay: async () => ({ play_id: 6 }),
+      endSession: async () => {
+        called = true;
+      },
+    };
+    const rec = createPlayRecorder(api, { playerId: 1, gameId: 4 });
+    await rec.begin();
+    const pending = rec.abandon({ keepalive: true });
+    expect(called).toBe(true);
+    await pending;
+  });
+});

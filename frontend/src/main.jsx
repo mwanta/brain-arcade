@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from 'react';
+import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 
@@ -9,12 +9,6 @@ import LoginPage from './pages/LoginPage.jsx';
 import DriftGamePage from './pages/DriftGamePage.jsx';
 import PlayerStatsPage from './pages/PlayerStatsPage.jsx';
 import './styles.css';
-
-// Dev-only visual check for the Drift game. Lazy-loaded behind DEV so the production
-// build drops the page, its CSS and the route entirely.
-const DriftPreviewPage = import.meta.env.DEV
-  ? lazy(() => import('./pages/DriftPreviewPage.jsx'))
-  : null;
 
 // The app only ever shows the logged-in player: /login to log in or create a player,
 // /stats for their stats. Anything else goes to /stats (or /login when logged out).
@@ -31,18 +25,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                 <RequireLogin>{(playerId) => <PlayerStatsPage playerId={playerId} />}</RequireLogin>
               }
             />
-            {DriftPreviewPage && (
-              <Route
-                path="/drift/preview"
-                element={
-                  <Suspense fallback={null}>
-                    <DriftPreviewPage />
-                  </Suspense>
-                }
-              />
-            )}
             <Route
-              path="/drift"
+              path="/drift/*"
               element={
                 <RequireLogin>{(playerId) => <DriftGamePage playerId={playerId} />}</RequireLogin>
               }
