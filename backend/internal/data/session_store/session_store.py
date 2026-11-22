@@ -35,3 +35,18 @@ class SessionStore:
         with self._db.cursor() as cur:
             cur.execute(_SQL["end"], {"session_id": session_id})
         return self.get_by_id(session_id)
+
+    def end_at(self, session_id, ended_at):
+        """Sets ended_at to the given time (if not already set) and returns the session."""
+        with self._db.cursor() as cur:
+            cur.execute(_SQL["end_at"], {"session_id": session_id, "ended_at": ended_at})
+        return self.get_by_id(session_id)
+
+    def delete_if_empty(self, session_id):
+        """Deletes an open session with no check-in and no finished play.
+
+        Returns True if it was deleted.
+        """
+        with self._db.cursor() as cur:
+            cur.execute(_SQL["delete_if_empty"], {"session_id": session_id})
+            return cur.rowcount > 0
