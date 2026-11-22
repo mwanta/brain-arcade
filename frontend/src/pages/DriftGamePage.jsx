@@ -33,8 +33,7 @@ function FinalScore({ recorder, total, onPlayAgain }) {
       onPlayAgain={onPlayAgain}
       saveStatus={status === 'idle' ? 'saving' : status}
       onRetrySave={recorder.retry}
-    >
-    </DriftScore>
+    ></DriftScore>
   );
 }
 
