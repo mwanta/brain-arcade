@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { useCurrentPlayer } from '../context/CurrentPlayerContext.jsx';
 
 export default function NavBar() {
@@ -13,6 +13,12 @@ export default function NavBar() {
   return (
     <header className="navbar">
       <span className="brand">Brain Arcade</span>
+      {player && (
+        <nav>
+          <NavLink to="/drift">Drift</NavLink>
+          <NavLink to="/stats">Stats</NavLink>
+        </nav>
+      )}
       {player && (
         <div className="navbar-user">
           <span className="navbar-username" title="Logged in">

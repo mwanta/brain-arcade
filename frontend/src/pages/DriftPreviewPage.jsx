@@ -1,82 +1,31 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import DriftBoard from '../games/drift/DriftBoard.jsx';
-import DriftLevel from '../games/drift/DriftLevel.jsx';
+import DriftGame from '../games/drift/DriftGame.jsx';
 import DriftScore from '../games/drift/DriftScore.jsx';
 import { LEVELS } from '../games/drift/levelFixtures.js';
-import {
-  SESSION_LEVELS,
-  TRIALS_PER_LEVEL,
-  scoreSession,
-  sessionLevelSettings,
-} from '../games/drift/session.js';
 import { parseLevelSettings } from '../games/drift/settings.js';
 import { generateTrials } from '../games/drift/trials.js';
 
 // Temporary dev tool for checking Drift by eye: browse generated trials, or play a whole
-// session (10 levels of 5 trials each) and get a score. The real Drift game page will replace
-// it later. The level fixtures copy backend/database/seed.sql (see levelFixtures.js).
+// game (10 levels of 5 trials each, 5 lives) with these fixtures and no API calls. The real
+// game is DriftGamePage at /drift. The level fixtures copy backend/database/seed.sql (see
+// levelFixtures.js).
+
+// Fixtures have no database ids, so a level's id is its number.
+const FIXTURE_LEVELS = Object.entries(LEVELS).map(([n, raw]) => ({
+  levelId: Number(n),
+  levelNumber: Number(n),
+  raw,
+}));
 
 function Session({ seed }) {
-  const [levelNumber, setLevelNumber] = useState(1);
-  const [finished, setFinished] = useState([]);
-  const [run, setRun] = useState(0);
-
-  // After the last level levelNumber is SESSION_LEVELS + 1: the last level stays on screen with
-  // the final score drawn over its board.
-  const gameOver = levelNumber > SESSION_LEVELS;
-  const shownLevel = Math.min(levelNumber, SESSION_LEVELS);
-  const settings = useMemo(() => sessionLevelSettings(LEVELS[shownLevel]), [shownLevel]);
-
-  const onComplete = useCallback(
-    ({ results }) => {
-      setFinished((prev) => [...prev, { results, timeLimit: settings.timeLimit }]);
-      setLevelNumber((n) => n + 1);
-    },
-    [settings]
-  );
-
-  // Dev shortcut: jump to any level. Scores of the levels before it are kept; later ones are
-  // dropped.
-  function jumpTo(n) {
-    setFinished((prev) => prev.slice(0, n - 1));
-    setLevelNumber(n);
-    setRun((r) => r + 1);
-  }
-
   return (
-    <div>
-      <p>
-        <label>
-          Jump to level (dev){' '}
-          <select value={shownLevel} onChange={(e) => jumpTo(Number(e.target.value))}>
-            {Array.from({ length: SESSION_LEVELS }, (_, i) => (
-              <option key={i + 1} value={i + 1}>
-                Level {i + 1}
-              </option>
-            ))}
-          </select>
-        </label>
-      </p>
-      <DriftLevel
-        title={`Level ${shownLevel} of ${SESSION_LEVELS}`}
-        key={`${run}-${shownLevel}`}
-        settings={settings}
-        seed={seed + shownLevel * 1000}
-        finalOverlay={
-          gameOver && (
-            <DriftScore
-              total={scoreSession(finished)}
-              onPlayAgain={() => {
-                setFinished([]);
-                setLevelNumber(1);
-                setRun((n) => n + 1);
-              }}
-            />
-          )
-        }
-        onComplete={onComplete}
-      />
-    </div>
+    <DriftGame
+      levels={FIXTURE_LEVELS}
+      seed={seed}
+      allowJump
+      renderFinal={(total, playAgain) => <DriftScore total={total} onPlayAgain={playAgain} />}
+    />
   );
 }
 

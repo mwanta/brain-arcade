@@ -9,6 +9,13 @@ describe('PIXEL_ICONS', () => {
     }
   });
 
+  it('has the heart icons, and the empty one is an outline of the full one', () => {
+    const full = iconPixels('heart');
+    const outline = iconPixels('heart-empty');
+    expect(outline.length).toBeGreaterThan(0);
+    expect(outline.length).toBeLessThan(full.length);
+  });
+
   it('points each arrow the right way', () => {
     const top = (name) => iconPixels(name).filter((p) => p.y === 0).length;
     expect(top('up')).toBeGreaterThan(0);

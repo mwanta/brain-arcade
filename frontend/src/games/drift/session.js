@@ -1,71 +1,79 @@
+import { evaluateLevel } from './scoring.js';
 import { parseLevelSettings } from './settings.js';
 
-/** A session is this many levels of this many trials each. */
+/**
+ * One "session" in this file is ONE GAME: this many levels of this many trials each. It is not
+ * the backend's `session` table, which is a player's sitting and can hold several game plays.
+ */
 export const SESSION_LEVELS = 10;
 export const TRIALS_PER_LEVEL = 5;
-/** Each level is worth this many points, so a whole session is out of 1000. */
-export const POINTS_PER_LEVEL = 100;
-/** A correct answer within this share of the time limit earns a trial's full points. */
-export const FULL_POINTS_UNTIL = 0.5;
-/** A correct answer at the time limit still earns this share of a trial's points. */
-export const MIN_CORRECT_SHARE = 0.85;
+/** Lives for the whole game. Every mistake (wrong answer or timeout) costs one. */
+export const STARTING_LIVES = 5;
 
 /**
- * Settings for one level of a session: the level's own difficulty, but only
- * TRIALS_PER_LEVEL trials, and no early fail, so every level is played in full.
+ * Settings for one level of a game: the level's own difficulty, but only TRIALS_PER_LEVEL trials,
+ * and max_errors = livesLeft - 1, so the level ends when the last life is lost and `passed`
+ * (see evaluateLevel) means "all trials played with a life left".
  *
  * @param {object} raw A level's raw (snake_case) settings.
+ * @param {number} livesLeft Lives at the start of the level, 1 to STARTING_LIVES.
  * @returns {object} Parsed settings.
  */
-export function sessionLevelSettings(raw) {
+export function sessionLevelSettings(raw, livesLeft) {
+  if (!Number.isInteger(livesLeft) || livesLeft < 1 || livesLeft > STARTING_LIVES) {
+    throw new Error(
+      `livesLeft must be a whole number from 1 to ${STARTING_LIVES}, got ${String(livesLeft)}`
+    );
+  }
   return parseLevelSettings({
     ...raw,
     trial_count: TRIALS_PER_LEVEL,
-    max_errors: TRIALS_PER_LEVEL,
+    max_errors: livesLeft - 1,
   });
 }
 
-/**
- * Points for one level, out of POINTS_PER_LEVEL. The points are shared equally between the
- * trials. A correct trial earns its full share if answered within FULL_POINTS_UNTIL of the time
- * limit, then loses points steadily as the answer gets slower, down to MIN_CORRECT_SHARE of the
- * share at the limit. Wrong answers and timeouts earn nothing.
- *
- * @param {Array<{ outcome: string, elapsedMs: number }>} results The level's trial results.
- * @param {number} timeLimit The level's time limit in ms.
- * @returns {number} Whole points, 0 to POINTS_PER_LEVEL.
- */
-export function levelPoints(results, timeLimit) {
-  if (results.length === 0) return 0;
-  const perTrial = POINTS_PER_LEVEL / results.length;
-  let points = 0;
-  for (const r of results) {
-    if (r.outcome !== 'correct') continue;
-    const slow = (r.elapsedMs / timeLimit - FULL_POINTS_UNTIL) / (1 - FULL_POINTS_UNTIL);
-    const lost = (1 - MIN_CORRECT_SHARE) * Math.min(1, Math.max(0, slow));
-    points += perTrial * (1 - lost);
-  }
-  return Math.round(points);
+function mistakesIn(results) {
+  return results.filter((r) => r.outcome !== 'correct').length;
 }
 
 /**
- * Score a whole session.
+ * Lives left after a level.
  *
- * @param {Array<{ results: Array<{ outcome: string, elapsedMs: number }>, timeLimit: number }>}
- *   levels One entry per level played, in order.
- * @returns {{ score: number, max_score: number, trials: number, mistakes: number,
- *   mean_rt_ms: number | null }} score is the sum of the levels' points out of max_score
- *   (POINTS_PER_LEVEL per level played); mistakes counts wrong answers and timeouts;
- *   mean_rt_ms is over correct answers only (null if there are none).
+ * @param {number} livesLeft Lives at the start of the level.
+ * @param {Array<{ outcome: string }>} results The level's trial results.
+ * @returns {number} livesLeft minus the mistakes, never below 0.
+ */
+export function livesAfter(livesLeft, results) {
+  return Math.max(0, livesLeft - mistakesIn(results));
+}
+
+/**
+ * The body for POST /api/game-plays/:id/attempts.
+ *
+ * @returns {{ level_id: number, passed: boolean, duration_ms: number, error_count: number }}
+ */
+export function attemptPayload(levelId, results, settings) {
+  const { passed, duration_ms, error_count } = evaluateLevel(results, settings);
+  return { level_id: levelId, passed, duration_ms, error_count };
+}
+
+/**
+ * Score a whole game.
+ *
+ * @param {Array<{ results: Array<{ outcome: string, elapsedMs: number }>, settings: object }>}
+ *   levels One entry per level played, in play order.
+ * @returns {{ levels_passed: number, total_levels: number, lives_left: number, cleared: boolean,
+ *   trials: number, mistakes: number, mean_rt_ms: number | null }} mean_rt_ms is over correct
+ *   answers only (null if there are none).
  */
 export function scoreSession(levels) {
-  let score = 0;
+  let levelsPassed = 0;
   let trials = 0;
   let mistakes = 0;
   let rtSum = 0;
   let correct = 0;
-  for (const { results, timeLimit } of levels) {
-    score += levelPoints(results, timeLimit);
+  for (const { results, settings } of levels) {
+    if (evaluateLevel(results, settings).passed) levelsPassed += 1;
     for (const r of results) {
       trials += 1;
       if (r.outcome === 'correct') {
@@ -77,10 +85,33 @@ export function scoreSession(levels) {
     }
   }
   return {
-    score,
-    max_score: levels.length * POINTS_PER_LEVEL,
+    levels_passed: levelsPassed,
+    total_levels: SESSION_LEVELS,
+    lives_left: Math.max(0, STARTING_LIVES - mistakes),
+    cleared: levelsPassed === SESSION_LEVELS,
     trials,
     mistakes,
     mean_rt_ms: correct === 0 ? null : Math.round(rtSum / correct),
   };
+}
+
+/**
+ * The levels to play from a GET /api/games/:id response.
+ *
+ * @param {{ levels: Array<{ level_id: number, level_number: number, settings: object }> }} game
+ * @returns {Array<{ levelId: number, levelNumber: number, raw: object }>} Sorted by level
+ *   number, the first SESSION_LEVELS only.
+ * @throws {Error} If there are too few levels or a level's settings are invalid.
+ */
+export function driftLevelsFromGame(game) {
+  const sorted = [...(game?.levels ?? [])]
+    .sort((a, b) => a.level_number - b.level_number)
+    .slice(0, SESSION_LEVELS);
+  if (sorted.length < SESSION_LEVELS) {
+    throw new Error(`Drift needs ${SESSION_LEVELS} levels but the game has ${sorted.length}`);
+  }
+  return sorted.map((l) => {
+    sessionLevelSettings(l.settings, STARTING_LIVES); // validates; its message passes through
+    return { levelId: l.level_id, levelNumber: l.level_number, raw: l.settings };
+  });
 }

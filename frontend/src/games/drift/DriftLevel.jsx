@@ -3,7 +3,8 @@ import ArrowPad from './ArrowPad.jsx';
 import DriftBoard from './DriftBoard.jsx';
 import PixelIcon from './PixelIcon.jsx';
 import { swipeDirection } from './input.js';
-import { currentTrial, levelSummary } from './levelMachine.js';
+import { currentTrial, errorsSoFar, levelSummary } from './levelMachine.js';
+import { STARTING_LIVES } from './session.js';
 import { generateTrials } from './trials.js';
 import { useDriftLevel } from './useDriftLevel.js';
 import './drift.css';
@@ -34,20 +35,48 @@ function Feedback({ outcome, answer }) {
   );
 }
 
+function Lives({ left, blinking }) {
+  return (
+    <div className="drift-lives" role="img" aria-label={`Lives: ${left} of ${STARTING_LIVES}`}>
+      {Array.from({ length: STARTING_LIVES }, (_, i) => (
+        <span
+          key={i}
+          className={`drift-heart ${i < left ? 'drift-heart-full' : 'drift-heart-empty'}${
+            blinking && i === left ? ' drift-heart-lost' : ''
+          }`}
+        >
+          <PixelIcon name={i < left ? 'heart' : 'heart-empty'} size={32} />
+        </span>
+      ))}
+    </div>
+  );
+}
+
 /**
  * Plays one level from start to finish.
  *
  * @param {{
- *   settings: object, seed: number, title?: string, finalOverlay?: ReactNode,
+ *   settings: object, seed: number, title?: string, lives?: number, finalOverlay?: ReactNode,
  *   onComplete: (done: { results: Array<object>, summary: object }) => void,
  * }} props `settings` is the parsed level settings; `onComplete` is called once, when the level
- *   ends (all trials played, or too many mistakes).
+ *   ends (all trials played, or the last life is lost). `lives` is the lives at the START of
+ *   the level; every mistake in the level costs one.
  */
-export default function DriftLevel({ settings, seed, title, finalOverlay, onComplete }) {
+export default function DriftLevel({
+  settings,
+  seed,
+  title,
+  lives = STARTING_LIVES,
+  finalOverlay,
+  onComplete,
+}) {
   const trials = useMemo(() => generateTrials(settings, seed), [settings, seed]);
   const { state, start, respond } = useDriftLevel(trials, settings);
   const { phase } = state;
   const trial = currentTrial(state);
+  const livesNow = Math.max(0, lives - errorsSoFar(state));
+  const lostJustNow =
+    phase === 'feedback' && state.lastOutcome && state.lastOutcome.outcome !== 'correct';
 
   const completed = useRef(false);
   useEffect(() => {
@@ -121,6 +150,7 @@ export default function DriftLevel({ settings, seed, title, finalOverlay, onComp
               showCars={shown}
               seed={seed + trial.index}
             />
+            <Lives left={livesNow} blinking={lostJustNow} />
             {phase === 'ready' && (
               <div className="drift-overlay drift-ready">
                 {title && <h2 className="drift-ready-title">{title}</h2>}

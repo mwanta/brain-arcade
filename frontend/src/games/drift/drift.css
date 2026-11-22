@@ -604,3 +604,95 @@
 .drift-level .drift-score .drift-start {
   margin-top: 1rem;
 }
+
+/* Lives: a row of pixel hearts in the board's top-right corner. Above the cars and the ready
+   panel, below the feedback and final overlays. Full and empty hearts differ in shape as well
+   as colour. */
+.drift-level {
+  --drift-ui-heart: #ff4d6d;
+  --drift-ui-heart-empty: #8d93a5;
+}
+
+.drift-lives {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  display: flex;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.drift-heart {
+  display: block;
+  line-height: 0;
+}
+
+.drift-heart-full {
+  color: var(--drift-ui-heart);
+}
+
+.drift-heart-empty {
+  color: var(--drift-ui-heart-empty);
+}
+
+.drift-heart-lost {
+  animation: drift-heart-blink 450ms steps(1, end) 1;
+}
+
+@keyframes drift-heart-blink {
+  0%,
+  50% {
+    color: var(--drift-ui-heart);
+  }
+  25%,
+  75% {
+    color: var(--drift-ui-ink);
+  }
+}
+
+.drift-level .drift-ready {
+  z-index: 1;
+}
+
+.drift-level .drift-feedback,
+.drift-level .drift-score {
+  z-index: 3;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drift-heart-lost {
+    animation: none;
+  }
+}
+
+/* Final screen: save status and extra actions. */
+.drift-level .drift-score-save {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 1.5rem;
+}
+
+.drift-level .drift-score-save .drift-start {
+  min-height: 40px;
+  font-size: 1.5rem;
+}
+
+.drift-score-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.drift-level .drift-score-actions a {
+  color: var(--drift-ui-ink);
+  font-size: 1.5rem;
+}
+
+.drift-level .drift-score .drift-start {
+  margin-top: 0;
+}
