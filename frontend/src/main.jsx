@@ -7,10 +7,10 @@ import RequireLogin from './components/RequireLogin.jsx';
 import { CurrentPlayerProvider } from './context/CurrentPlayerContext.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import PlayerStatsPage from './pages/PlayerStatsPage.jsx';
+import QuickMatchPage from './pages/QuickMatchPage.jsx';
 import './styles.css';
 
-// The app only ever shows the logged-in player: /login to log in or create a player,
-// /stats for their stats. Anything else goes to /stats (or /login when logged out).
+// Gameplay and stats use the logged-in player held by CurrentPlayerProvider.
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <CurrentPlayerProvider>
@@ -18,6 +18,12 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <Routes>
           <Route element={<Layout />}>
             <Route path="/login" element={<LoginPage />} />
+            <Route
+              path="/games/quick-match"
+              element={
+                <RequireLogin>{(playerId) => <QuickMatchPage playerId={playerId} />}</RequireLogin>
+              }
+            />
             <Route
               path="/stats"
               element={

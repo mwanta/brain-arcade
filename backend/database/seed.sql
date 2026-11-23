@@ -18,7 +18,7 @@ INSERT INTO cognitive_domain (domain_id, name, description) VALUES
 INSERT INTO game (game_id, domain_id, name, instructions) VALUES
     (1, 1, 'Sequence Recall', 'Watch the tiles light up, then tap them back in the same order.'),
     (2, 2, 'Odd One Out',     'Tap the single shape that differs from the rest before time runs out.'),
-    (3, 3, 'Quick Match',     'Decide as fast as you can whether the two symbols match.'),
+    (3, 3, 'Quick Match',     'Remember the first symbol. For each new symbol, press right for Same or left for Different compared with the immediately previous symbol. Complete every comparison within the per-symbol time limit and stay within the error allowance to pass. Wrong answers and timeouts each count as one error.'),
     (4, 4, 'Drift',           'Follow the car with its headlights on. If it is driving, swipe the way it faces. If it is drifting, with tire smoke and skid marks, swipe the way it moves across the screen.');
 
 INSERT INTO setting_type (setting_type_id, name, unit, description) VALUES
@@ -38,7 +38,9 @@ INSERT INTO level (level_id, game_id, level_number) VALUES
     (4, 2, 1), (5, 2, 2), (6, 2, 3),
     (7, 3, 1), (8, 3, 2),
     (9, 4, 1),  (10, 4, 2), (11, 4, 3), (12, 4, 4), (13, 4, 5),
-    (14, 4, 6), (15, 4, 7), (16, 4, 8), (17, 4, 9), (18, 4, 10);
+    (14, 4, 6), (15, 4, 7), (16, 4, 8), (17, 4, 9), (18, 4, 10),
+    (19, 3, 3), (20, 3, 4), (21, 3, 5), (22, 3, 6),
+    (23, 3, 7), (24, 3, 8), (25, 3, 9), (26, 3, 10);
 
 INSERT INTO level_setting (level_id, setting_type_id, setting_value) VALUES
     -- Sequence Recall: longer sequences, no errors allowed
@@ -49,9 +51,18 @@ INSERT INTO level_setting (level_id, setting_type_id, setting_value) VALUES
     (4, 3, 9),  (4, 2, 5000),  (4, 4, 0),
     (5, 3, 16), (5, 2, 4000),  (5, 4, 0),
     (6, 3, 25), (6, 2, 3000),  (6, 4, 0),
-    -- Quick Match: less time, fewer errors allowed
-    (7, 2, 2000), (7, 4, 2),
-    (8, 2, 1200), (8, 4, 1),
+    -- Quick Match: 12 comparisons per level; time_limit is per comparison (ms).
+    -- Keep the original two levels' time and error settings.
+    (7, 2, 2000), (7, 4, 2), (7, 5, 12),
+    (8, 2, 1200), (8, 4, 1), (8, 5, 12),
+    (19, 2, 1100), (19, 4, 1), (19, 5, 12),
+    (20, 2, 1000), (20, 4, 1), (20, 5, 12),
+    (21, 2,  900), (21, 4, 1), (21, 5, 12),
+    (22, 2,  800), (22, 4, 1), (22, 5, 12),
+    (23, 2,  700), (23, 4, 1), (23, 5, 12),
+    (24, 2,  600), (24, 4, 1), (24, 5, 12),
+    (25, 2,  500), (25, 4, 1), (25, 5, 12),
+    (26, 2,  400), (26, 4, 1), (26, 5, 12),
     -- Drift, levels 1-5 (all cars lit): more cars, faster, more switching and conflict, less time
     -- columns: time_limit, max_errors, trial_count, switch_probability, car_count, move_speed, conflict_ratio, mixed_traffic
     (9,  2, 3000), (9,  4, 4), (9,  5, 20), (9,  6, 0.20), (9,  7, 1), (9,  8,  60), (9,  9, 0.30), (9, 10, 0),
