@@ -20,6 +20,7 @@ frontend/src/
   api/             backend calls (client.js fetch wrapper + one file per resource)
   components/      one component per file
   pages/           compose components into pages
+  games/drift/     Drift's game logic, tutorial and tests
 ```
 
 ## Setup
@@ -43,6 +44,15 @@ frontend/src/
    ```
 
 5. **Formatting:** `make format` fixes formatting (ruff for Python, Prettier for the frontend). `make format-check` only reports, and CI runs it.
+
+## Games
+
+**Drift** (`frontend/src/games/drift/`, page in `frontend/src/pages/DriftGamePage.jsx`) is mounted at `/drift/*` and needs login.
+
+- `/drift` is the how-to-play tutorial, with a Start Game button.
+- `/drift/play` is the game: 10 levels of 5 rounds each, with 5 lives for the whole game. Other paths go back to `/drift`.
+- Plays are saved: one backend session per sitting (it ends when the player leaves `/drift/play` or closes the page), one game play per game, and one level attempt per finished level. The database score is the last level fully passed.
+- The round count and the lives come from the game, so Drift's levels in `seed.sql` have no `trial_count` or `max_errors` settings. `time_limit` is the time allowed per round.
 
 ## Contributing
 
@@ -77,7 +87,7 @@ Errors return `{error, details}` with 400 (validation), 404 (not found) or 409 (
 
 | Method | Path | Body / notes |
 |---|---|---|
-| POST | /api/sessions | `{player_id}` |
+| POST | /api/sessions | `{player_id}`; also tidies the player's other open sessions that have been quiet for 2 hours: one with a check-in or a finished play is ended at its last activity, any other is deleted (see [SCHEMA.md](SCHEMA.md)) |
 | GET | /api/sessions/:id | |
 | POST | /api/sessions/:id/end | 409 if already ended |
 | GET | /api/players/:id/sessions | newest first |

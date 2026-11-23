@@ -39,7 +39,9 @@ export default function LevelPerformance({ playerId, filters }) {
                     <tr key={r.level_number}>
                       <td>{r.level_number}</td>
                       <td className="muted small">
-                        {seconds(r.time_limit_ms)} limit · {num(r.max_errors)} errors allowed
+                        {r.max_errors == null
+                          ? `${seconds(r.time_limit_ms)} per round`
+                          : `${seconds(r.time_limit_ms)} limit · ${num(r.max_errors)} errors allowed`}
                       </td>
                       <td>{r.attempts}</td>
                       <td>

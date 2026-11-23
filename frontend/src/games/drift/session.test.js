@@ -179,3 +179,27 @@ describe('driftLevelsFromGame', () => {
     expect(() => driftLevelsFromGame(bad)).toThrow(/distractor_count/);
   });
 });
+
+describe('settings from the database (no trial_count or max_errors)', () => {
+  // The seed no longer stores these two for Drift; the game supplies them.
+  const { trial_count, max_errors, ...FROM_API } = RAW;
+
+  it('sessionLevelSettings fills in 5 trials and the lives-based error limit', () => {
+    expect(trial_count).toBeDefined();
+    expect(max_errors).toBeDefined();
+    expect(sessionLevelSettings(FROM_API, 5)).toMatchObject({ trialCount: 5, maxErrors: 4 });
+    expect(sessionLevelSettings(FROM_API, 2)).toMatchObject({ trialCount: 5, maxErrors: 1 });
+  });
+
+  it('driftLevelsFromGame accepts levels without them', () => {
+    const levels = driftLevelsFromGame({
+      levels: Array.from({ length: 10 }, (_, i) => ({
+        level_id: 100 + i,
+        level_number: i + 1,
+        settings: FROM_API,
+      })),
+    });
+    expect(levels).toHaveLength(SESSION_LEVELS);
+    expect(levels[0].raw).toEqual(FROM_API);
+  });
+});
