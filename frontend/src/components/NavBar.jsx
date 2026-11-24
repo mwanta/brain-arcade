@@ -14,8 +14,9 @@ export default function NavBar() {
     <header className="navbar">
       <span className="brand">Brain Arcade</span>
       {player && (
-        <nav>
+        <nav aria-label="Main navigation">
           <NavLink to="/drift">Drift</NavLink>
+          <NavLink to="/games/quick-match">Quick Match</NavLink>
           <NavLink to="/stats">Stats</NavLink>
         </nav>
       )}

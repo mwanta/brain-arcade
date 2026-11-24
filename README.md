@@ -58,6 +58,57 @@ frontend/src/
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for conventions and how to add a new table.
 
+## Quick Match (processing speed)
+
+Use the site's existing login, then choose **Quick Match** in the navigation or visit
+`/games/quick-match`. This game uses the shared `CurrentPlayerContext`, `RequireLogin`,
+API wrappers and `/stats` page. Its own page contains instructions, gameplay and a short
+end-of-game summary with a link to the shared stats.
+Inspired by [Lumosity's Speed Match](https://www.lumosity.com/en/brain-games/speed-match/),
+the player sees one symbol at a time and decides whether it matches the immediately
+previous symbol. Left arrow / **Different** and right arrow / **Same** work on every
+level. Buttons also support touch. Each level begins with an unscored reference symbol.
+
+The seed catalog has 10 levels, with 12 comparisons per level and per-symbol deadlines
+of 2000, 1200, 1100, 1000, 900, 800, 700, 600, 500 and 400 ms. Level 1 allows two errors,
+and the others allow one. A wrong answer or timeout counts once. Passing all comparisons
+within the error allowance unlocks the next level. Exceeding the allowance ends the game.
+Stopping during a level records an unsuccessful attempt. Each sequence has an equal
+number of matching and different comparisons, shuffled for each attempt.
+
+Existing databases can load `backend/database/quick_match_catalog.sql` through the
+MySQL client to add the levels and register the `trial_count` setting without rebuilding
+the database. New databases get
+the same configuration from `seed.sql`. The game also supports the original two-level
+catalog, using 12 comparisons when `trial_count` is absent. Settings are loaded from
+the API and IDs are resolved from the catalog.
+
+| Input/output | Tables and API |
+|---|---|
+| Player | Existing logged-in `player` from `CurrentPlayerContext` |
+| Difficulty | `game`, `cognitive_domain`, `level`, `level_setting`, `setting_type` through `GET /api/games` and `GET /api/games/:id` |
+| Start | Create one `session` and one `game_play` using their existing POST endpoints |
+| Optional check-in | One `check_in` with sleep, caffeine, stress and exercise before the play |
+| Level result | One `level_attempt` per attempted level, using `POST /api/game-plays/:id/attempts` |
+| Finish | Finish the `game_play`, then end its `session` |
+| Score | Read the highest level passed from `game_play_score` through the existing play API |
+
+For Quick Match, `time_limit` applies to each comparison. `duration_ms` is the sum of
+time spent answering comparisons, including timeouts, excluding the reference display,
+transitions, feedback and API waits. `error_count` totals wrong answers and timeouts.
+`started_at` is the UTC timestamp of the first answerable symbol. `passed` requires
+completing all comparisons within the error allowance. Trial responses are aggregated
+in the browser into these existing fields. The level-performance stats therefore show
+total answering time alongside the per-comparison deadline.
+
+Level results are saved before advancement. Failed writes offer a retry, and a readback
+of the original attempt timestamp prevents duplicate results after a lost POST response.
+Finishing can also be retried after a lost response. **Save and finish** makes the play
+eligible for the existing stats. Navigating away or closing the page sends a best-effort
+session close, matching the site's session lifecycle. The play stays unfinished and the
+stats exclude it. If closing fails, the backend's stale-session cleanup handles it later.
+The username-only login continues to be held in memory.
+
 ## API
 
 Errors return `{error, details}` with 400 (validation), 404 (not found) or 409 (conflict, e.g. username taken or session already ended). Times are ISO 8601. Frontend wrappers for every endpoint are in `frontend/src/api/`.
