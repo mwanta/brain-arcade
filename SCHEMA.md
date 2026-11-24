@@ -116,6 +116,7 @@ Data a player generates (sessions, check-ins, plays, attempts) is deleted with t
 - **Level difficulty and pass rules live in `level_setting`.** Each level's `sequence_length`, `time_limit`, `max_errors` and so on are rows, not columns, so new kinds of settings need no schema change.
 - **`level_attempt.passed` is stored, not derived.** It's the outcome judged against the level's settings at play time, so changing a level's settings later doesn't rewrite history.
 - **`game_play` has no `player_id`.** The player is reached through `session`; storing it again would break 3NF.
+- **Abandoned sessions are tidied when the player starts a new one.** A session that is still open after 2 hours with no activity (it starting, or a play starting or finishing) is ended at its last activity if it has a check-in or a finished play, and deleted otherwise. This is done in `SessionHandler.start_session`; there is no schema change.
 
 ## View: `game_play_score`
 

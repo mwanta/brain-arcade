@@ -84,6 +84,8 @@ describe('Quick Match rules', () => {
     );
     expect(catalog).toEqual(upgradeRows);
     expect(catalog).toHaveLength(10);
+    expect(seed).toContain("(5,  'trial_count'");
+    expect(upgrade).toContain('INSERT INTO setting_type (name, unit, description)');
     expect(catalog.every((row, index) => row[0] === index + 1 && row[3] === 12)).toBe(true);
     expect(catalog.slice(1).every((row, index) => row[1] < catalog[index][1])).toBe(true);
   });

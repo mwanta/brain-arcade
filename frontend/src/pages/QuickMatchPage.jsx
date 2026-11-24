@@ -25,6 +25,18 @@ export default function QuickMatchPage({ playerId }) {
   const [checkIn, setCheckIn] = useState(EMPTY_CHECK_IN);
   const run = useRef(null);
   const busy = useRef(false);
+  const mounted = useRef(false);
+
+  useEffect(() => {
+    mounted.current = true;
+    const onPageHide = () => run.current?.abandon({ keepalive: true });
+    window.addEventListener('pagehide', onPageHide);
+    return () => {
+      mounted.current = false;
+      window.removeEventListener('pagehide', onPageHide);
+      run.current?.abandon();
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -63,6 +75,10 @@ export default function QuickMatchPage({ playerId }) {
       );
       run.current ??= new QuickMatchRun(playerId, game.game_id);
       await run.current.start(Object.keys(values).length ? values : null);
+      if (!mounted.current) {
+        await run.current.abandon();
+        return;
+      }
       setPhase('ready');
     } catch (err) {
       setError(err);

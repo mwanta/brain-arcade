@@ -1,0 +1,931 @@
+/* Drift board, pixel-art style. Every colour is a custom property scoped to .drift-board.
+   Drifting cars are blue and driving cars red, but smoke and skid marks also mark a drift, so
+   the cue never relies on colour alone. */
+.drift-board {
+  --drift-asphalt: #2d3142;
+  --drift-speckle: #383d52;
+  --drift-lane: rgb(255 209 102 / 0.4);
+  --drift-frame: #0b0b14;
+  --drift-frame-shadow: #5c6078;
+  --drift-car-body: #e04646;
+  --drift-car-body-drift: #3d7be0;
+  --drift-car-body-distractor: #8d93a5;
+  --drift-car-stripe-distractor: #c5c9d6;
+  --drift-car-stripe: #f6e7c1;
+  --drift-wheel: #05050a;
+  --drift-car-outline: #0b0b14;
+  --drift-glass: #8fd3ff;
+  --drift-rear-glass: #11172a;
+  --drift-lamp-on: #fff27a;
+  --drift-lamp-off: #3a3a4a;
+  --drift-beam: rgb(255 242 122 / 0.4);
+  --drift-smoke: rgb(226 228 236 / 0.75);
+  --drift-skid: rgb(8 8 14 / 0.9);
+
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 720px;
+  aspect-ratio: 1 / 1;
+  height: auto;
+  margin: 0 auto;
+  border: 4px solid var(--drift-frame);
+  border-radius: 0;
+  box-shadow: 6px 6px 0 var(--drift-frame-shadow);
+  overflow: hidden;
+}
+
+.drift-board .drift-road {
+  fill: var(--drift-asphalt);
+}
+
+.drift-board .drift-speckle {
+  fill: var(--drift-speckle);
+}
+
+.drift-board .drift-lane {
+  stroke: var(--drift-lane);
+  stroke-width: 4;
+  /* 13 dashes of 24 with 12 gaps of 24 fill the 600-unit board exactly, ending in a dash. */
+  stroke-dasharray: 24 24;
+  stroke-linecap: butt;
+  fill: none;
+}
+
+.drift-board .drift-outline {
+  fill: var(--drift-car-outline);
+}
+
+.drift-board .drift-body {
+  fill: var(--drift-car-body);
+}
+
+.drift-board .drift-car-drifting .drift-body {
+  fill: var(--drift-car-body-drift);
+}
+
+.drift-board .drift-car-distractor .drift-body {
+  fill: var(--drift-car-body-distractor);
+}
+
+.drift-board .drift-car-distractor .drift-stripe {
+  fill: var(--drift-car-stripe-distractor);
+}
+
+.drift-board .drift-stripe {
+  fill: var(--drift-car-stripe);
+}
+
+.drift-board .drift-wheel {
+  fill: var(--drift-wheel);
+}
+
+.drift-board .drift-windshield {
+  fill: var(--drift-glass);
+}
+
+.drift-board .drift-rear-window {
+  fill: var(--drift-rear-glass);
+}
+
+.drift-board .drift-lamp {
+  fill: var(--drift-lamp-on);
+}
+
+.drift-board .drift-car-distractor .drift-lamp {
+  fill: var(--drift-lamp-off);
+}
+
+.drift-board .drift-beam {
+  fill: var(--drift-beam);
+}
+
+.drift-board .drift-skid {
+  fill: var(--drift-skid);
+}
+
+.drift-board .drift-smoke {
+  fill: var(--drift-smoke);
+  animation: drift-smoke-pulse 1s steps(2, jump-none) infinite;
+}
+
+@keyframes drift-smoke-pulse {
+  0% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drift-board .drift-smoke {
+    animation: none;
+  }
+}
+
+/* Playing a level: stage, overlays, time bar, feedback and the arrow pad. */
+.drift-level {
+  --drift-ui-ink: #f4f1e8;
+  --drift-ui-panel: rgb(11 11 20 / 0.82);
+  --drift-ui-correct: #3ddc84;
+  --drift-ui-wrong: #ff6b6b;
+  --drift-ui-late: #ffd166;
+  --drift-ui-track: #1b1e2e;
+  --drift-ui-bar: #ffd166;
+  --drift-ui-bar-low: #ff6b6b;
+  --drift-ui-key: #3a3f5c;
+  --drift-ui-key-hover: #4d5380;
+  --drift-ui-key-active: #ffd166;
+  --drift-ui-key-active-hover: #ffe699;
+  --drift-ui-key-active-ink: #0b0b14;
+  --drift-ui-key-edge: #0b0b14;
+
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.drift-status {
+  display: flex;
+  justify-content: space-between;
+  margin: 0 0 0.5rem;
+  font-weight: 600;
+}
+
+.drift-stage {
+  position: relative;
+  /* Stops mobile browsers scrolling or zooming mid-swipe. */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.drift-overlay {
+  position: absolute;
+  inset: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  box-sizing: border-box;
+  text-align: center;
+  color: var(--drift-ui-ink);
+  background: var(--drift-ui-panel);
+}
+
+.drift-ready p {
+  margin: 0;
+  max-width: 20em;
+  font-size: 1.25rem;
+}
+
+.drift-start {
+  min-height: 56px;
+  padding: 0 2rem;
+  font: inherit;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--drift-ui-key-active-ink);
+  background: var(--drift-ui-key-active);
+  border: 3px solid var(--drift-ui-key-edge);
+  cursor: pointer;
+}
+
+.drift-feedback {
+  font-weight: 700;
+  animation: drift-feedback-pop 150ms steps(3, jump-none);
+}
+
+.drift-feedback-icon {
+  font-size: 4rem;
+  line-height: 1;
+}
+
+.drift-feedback-text {
+  font-size: 1.75rem;
+}
+
+.drift-feedback-answer,
+.drift-feedback-note {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.drift-feedback-correct .drift-feedback-icon,
+.drift-feedback-correct .drift-feedback-text {
+  color: var(--drift-ui-correct);
+}
+
+.drift-feedback-wrong .drift-feedback-icon,
+.drift-feedback-wrong .drift-feedback-text {
+  color: var(--drift-ui-wrong);
+}
+
+.drift-feedback-timeout .drift-feedback-icon,
+.drift-feedback-timeout .drift-feedback-text {
+  color: var(--drift-ui-late);
+}
+
+@keyframes drift-feedback-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.drift-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.drift-timebar {
+  box-sizing: border-box;
+  height: 14px;
+  margin: 1rem 0;
+  overflow: hidden;
+  background: var(--drift-ui-track);
+  border: 3px solid var(--drift-frame-color, #0b0b14);
+}
+
+.drift-timebar-fill {
+  width: 100%;
+  height: 100%;
+  background: var(--drift-ui-bar);
+  transform-origin: left center;
+  animation: drift-timebar-shrink linear forwards;
+}
+
+@keyframes drift-timebar-shrink {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+.drift-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 72px);
+  grid-template-rows: repeat(3, 72px);
+  gap: 8px;
+  justify-content: center;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.drift-pad-button {
+  min-width: 56px;
+  min-height: 56px;
+  padding: 0;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--drift-ui-ink);
+  background: var(--drift-ui-key);
+  border: 3px solid var(--drift-ui-key-edge);
+  box-shadow: 0 5px 0 var(--drift-ui-key-edge);
+  cursor: pointer;
+  touch-action: none;
+}
+
+.drift-pad-up {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.drift-pad-left {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.drift-pad-right {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.drift-pad-down {
+  grid-column: 2;
+  grid-row: 3;
+}
+
+.drift-pad-button:hover:not(:disabled) {
+  background: var(--drift-ui-key-hover);
+}
+
+.drift-pad-button:active:not(:disabled) {
+  color: var(--drift-ui-key-active-ink);
+  background: var(--drift-ui-key-active);
+  transform: translateY(4px);
+  box-shadow: 0 1px 0 var(--drift-ui-key-edge);
+}
+
+.drift-pad-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drift-feedback {
+    animation: none;
+  }
+
+  /* The bar steps down in ten notches instead of sliding, but still shows the time left. */
+  .drift-timebar-fill {
+    animation-timing-function: steps(10, jump-none);
+  }
+}
+
+/* Level progress: fills as trials are answered. */
+.drift-progress {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 0.75rem;
+}
+
+.drift-progress-segment {
+  flex: 1 1 0;
+  height: 14px;
+  box-sizing: border-box;
+  background: var(--drift-ui-track);
+  border: 3px solid var(--drift-ui-key-edge);
+}
+
+.drift-progress-correct {
+  background: var(--drift-ui-correct);
+}
+
+.drift-progress-wrong {
+  background: var(--drift-ui-wrong);
+}
+
+.drift-progress-timeout {
+  background: var(--drift-ui-late);
+}
+
+.drift-ready .drift-ready-note {
+  padding: 0.5rem 0.75rem;
+  font-size: 1.05rem;
+  background: rgb(255 255 255 / 0.12);
+  border: 2px solid var(--drift-ui-late);
+}
+
+.drift-ready-title {
+  margin: 0;
+  font-size: 2rem;
+}
+
+/* Board and time bar on the left, arrow pad on the right; stacked on narrow screens. */
+.drift-level {
+  max-width: 1000px;
+}
+
+.drift-play {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+/* The game board and the tutorial board share one size. */
+.drift-level,
+.drift-tutorial {
+  --drift-board-size: 500px;
+}
+
+.drift-main {
+  flex: 0 1 auto;
+  width: var(--drift-board-size);
+  min-width: 0;
+}
+
+.drift-main .drift-timebar {
+  margin-bottom: 0;
+}
+
+.drift-play .drift-pad {
+  flex: none;
+}
+
+@media (max-width: 700px) {
+  .drift-play {
+    flex-direction: column;
+  }
+
+  .drift-main {
+    width: 100%;
+  }
+}
+
+/* Retro game font for everything inside a level. Jersey 10 is loaded in index.html; the
+   monospace stack is the fallback. The font is wide, so sizes are smaller than the defaults. */
+.drift-level {
+  --drift-font: 'Jersey 10', ui-monospace, 'Courier New', monospace;
+
+  font-family: var(--drift-font);
+  line-height: 1.6;
+}
+
+.drift-level button {
+  font-family: var(--drift-font);
+}
+
+.drift-level .drift-ready p {
+  font-size: 0.85rem;
+}
+
+.drift-level .drift-ready .drift-ready-note {
+  font-size: 0.7rem;
+}
+
+.drift-level .drift-ready-title {
+  font-size: 1.25rem;
+}
+
+.drift-level .drift-start {
+  font-size: 1rem;
+}
+
+.drift-level .drift-feedback-text {
+  font-size: 1.25rem;
+}
+
+.drift-level .drift-feedback-answer,
+.drift-level .drift-feedback-note {
+  font-size: 0.7rem;
+}
+
+.drift-feedback-answer {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.drift-feedback-icon,
+.drift-pixel-icon {
+  display: block;
+  line-height: 0;
+  image-rendering: pixelated;
+}
+
+/* Press Start 2P has one weight; any bold on top of it is a smeared fake. */
+.drift-level,
+.drift-level h2,
+.drift-level button,
+.drift-level .drift-feedback,
+.drift-level .drift-feedback-answer,
+.drift-level .drift-feedback-note {
+  font-weight: 400;
+}
+
+.drift-level .drift-overlay {
+  gap: 1.5rem;
+}
+
+.drift-level .drift-ready p {
+  line-height: 2;
+}
+
+.drift-level .drift-ready .drift-ready-note {
+  line-height: 2;
+}
+
+.drift-level .drift-feedback {
+  gap: 1.25rem;
+}
+
+/* Centre the icon in each pad button. */
+.drift-pad-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Let the start-screen text use most of the board's width. */
+.drift-level .drift-ready p {
+  max-width: 90%;
+}
+
+/* Jersey 10 is narrow and small for its size: upper case, larger sizes, tighter lines. */
+.drift-level {
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.drift-level .drift-ready p,
+.drift-level .drift-ready .drift-ready-note {
+  font-size: 1.6rem;
+  line-height: 1.25;
+}
+
+.drift-level .drift-ready-title {
+  font-size: 3rem;
+}
+
+.drift-level .drift-start {
+  font-size: 2rem;
+}
+
+.drift-level .drift-feedback-text {
+  font-size: 2.75rem;
+}
+
+.drift-level .drift-feedback-answer,
+.drift-level .drift-feedback-note {
+  font-size: 1.5rem;
+}
+
+/* Larger text (overrides the sizes above). */
+.drift-level .drift-ready p,
+.drift-level .drift-ready .drift-ready-note {
+  font-size: 2.1rem;
+}
+
+.drift-level .drift-ready-title {
+  font-size: 3.75rem;
+}
+
+.drift-level .drift-start {
+  font-size: 2.5rem;
+}
+
+.drift-level .drift-feedback-text {
+  font-size: 3.5rem;
+}
+
+.drift-level .drift-feedback-answer,
+.drift-level .drift-feedback-note {
+  font-size: 1.9rem;
+}
+
+/* Only the level title is upper case. */
+.drift-level {
+  text-transform: none;
+}
+
+.drift-level .drift-ready-title {
+  text-transform: uppercase;
+}
+
+/* Final score, drawn over the empty road. */
+.drift-level .drift-score {
+  gap: 0.75rem;
+  overflow: auto;
+}
+
+.drift-level .drift-score p {
+  margin: 0;
+}
+
+.drift-level .drift-score-total {
+  font-size: 4.5rem;
+  line-height: 1;
+  color: var(--drift-ui-late);
+}
+
+.drift-level .drift-score-max {
+  font-size: 2rem;
+  color: var(--drift-ui-ink);
+}
+
+.drift-level .drift-score-line {
+  font-size: 2rem;
+}
+
+/* Same space between the title and the score as between the last line and the button. */
+.drift-level .drift-score .drift-ready-title {
+  margin: 0 0 1rem;
+  line-height: 1;
+}
+
+.drift-level .drift-score .drift-start {
+  margin-top: 1rem;
+}
+
+/* Lives: a row of pixel hearts in the board's top-right corner. Above the cars and the ready
+   panel, below the feedback and final overlays. Full and empty hearts differ in shape as well
+   as colour. */
+.drift-level {
+  --drift-ui-heart: #ff4d6d;
+  --drift-ui-heart-empty: #8d93a5;
+}
+
+.drift-lives {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  display: flex;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.drift-heart {
+  display: block;
+  line-height: 0;
+}
+
+.drift-heart-full {
+  color: var(--drift-ui-heart);
+}
+
+.drift-heart-empty {
+  color: var(--drift-ui-heart-empty);
+}
+
+.drift-heart-lost {
+  animation: drift-heart-blink 450ms steps(1, end) 1;
+}
+
+@keyframes drift-heart-blink {
+  0%,
+  50% {
+    color: var(--drift-ui-heart);
+  }
+  25%,
+  75% {
+    color: var(--drift-ui-ink);
+  }
+}
+
+.drift-level .drift-ready {
+  z-index: 1;
+}
+
+.drift-level .drift-feedback,
+.drift-level .drift-score {
+  z-index: 3;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drift-heart-lost {
+    animation: none;
+  }
+}
+
+/* Final screen: save status and extra actions. */
+.drift-level .drift-score-save {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 1.5rem;
+}
+
+.drift-level .drift-score-save .drift-start {
+  min-height: 40px;
+  font-size: 1.5rem;
+}
+
+.drift-score-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.drift-level .drift-score-actions a {
+  color: var(--drift-ui-ink);
+  font-size: 1.5rem;
+}
+
+.drift-level .drift-score .drift-start {
+  margin-top: 0;
+}
+
+/* How-to-play walkthrough. */
+.drift-tutorial {
+  --drift-font: 'Jersey 10', ui-monospace, 'Courier New', monospace;
+  --drift-tut-ink: #f4f1e8;
+  --drift-tut-panel: #1b1e2e;
+  --drift-tut-edge: #0b0b14;
+  --drift-tut-button: #3a3f5c;
+  --drift-tut-button-hover: #4d5380;
+  --drift-tut-accent: #ffd166;
+  --drift-tut-accent-hover: #ffe699;
+  --drift-tut-accent-ink: #0b0b14;
+  --drift-tut-dot: #4d5380;
+
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5rem;
+  max-width: 1000px;
+  margin: 0 auto;
+  font-family: var(--drift-font);
+}
+
+.drift-tutorial-board {
+  flex: 0 1 auto;
+  width: var(--drift-board-size);
+  min-width: 0;
+}
+
+.drift-tutorial-side {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.drift-tutorial-button-start {
+  min-height: 56px;
+  font-size: 1.75rem;
+}
+
+/* On the last step the Start button turns yellow. */
+.drift-tutorial-button.drift-tutorial-button-ready {
+  color: var(--drift-tut-accent-ink);
+  background: var(--drift-tut-accent);
+}
+
+.drift-tutorial-button.drift-tutorial-button-ready:hover:not(:disabled) {
+  background: var(--drift-tut-accent-hover);
+}
+
+.drift-tutorial-slides {
+  display: grid;
+  margin-bottom: 0.75rem;
+}
+
+.drift-tutorial-slide {
+  grid-area: 1 / 1;
+}
+
+.drift-tutorial-slide-hidden {
+  visibility: hidden;
+}
+
+.drift-tutorial-panel {
+  box-sizing: border-box;
+  padding: 1rem;
+  color: var(--drift-tut-ink);
+  background: var(--drift-tut-panel);
+  border: 4px solid var(--drift-tut-edge);
+}
+
+.drift-tutorial-heading {
+  margin: 0 0 0.5rem;
+  font-size: 2rem;
+  font-weight: 400;
+  line-height: 1.1;
+  color: var(--drift-tut-accent);
+}
+
+.drift-tutorial-count {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.drift-tutorial-dots {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+
+.drift-tutorial-dot {
+  width: 14px;
+  height: 14px;
+  background: var(--drift-tut-dot);
+  border: 2px solid var(--drift-tut-edge);
+}
+
+.drift-tutorial-dot-current {
+  background: var(--drift-tut-accent);
+}
+
+.drift-tutorial-title {
+  margin: 0.5rem 0;
+  font-size: 2.5rem;
+  font-weight: 400;
+  line-height: 1.1;
+}
+
+.drift-tutorial-text {
+  margin: 0 0 0.75rem;
+  font-size: 1.6rem;
+  line-height: 1.25;
+}
+
+.drift-tutorial-answer {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0 0 0.75rem;
+  font-size: 1.6rem;
+}
+
+.drift-tutorial-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.drift-tutorial-button {
+  min-height: 48px;
+  padding: 0 1.25rem;
+  font-family: var(--drift-font);
+  font-size: 1.5rem;
+  color: var(--drift-tut-ink);
+  background: var(--drift-tut-button);
+  border: 3px solid var(--drift-tut-edge);
+  cursor: pointer;
+}
+
+.drift-tutorial-button:hover:not(:disabled) {
+  background: var(--drift-tut-button-hover);
+}
+
+.drift-tutorial-button-primary {
+  color: var(--drift-tut-accent-ink);
+  background: var(--drift-tut-accent);
+}
+
+.drift-tutorial-button-primary:hover:not(:disabled) {
+  background: var(--drift-tut-accent-hover);
+}
+
+.drift-tutorial-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+@media (max-width: 700px) {
+  .drift-tutorial {
+    flex-direction: column;
+  }
+
+  .drift-tutorial-board,
+  .drift-tutorial-side {
+    width: 100%;
+    flex: none;
+  }
+}
+
+/* Smaller text on the screen before each level (the title, the note, the prompt and Start). */
+.drift-level .drift-ready p,
+.drift-level .drift-ready .drift-ready-note {
+  font-size: 1.5rem;
+}
+
+.drift-level .drift-ready .drift-ready-title {
+  font-size: 2.5rem;
+}
+
+.drift-level .drift-ready .drift-start {
+  font-size: 1.75rem;
+}
+
+/* The Back button sits at the far left, level with the top of the game, and stays after the
+   game is over. The board and arrow pad are centred in the space beside it. */
+.drift-game-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.drift-game-main {
+  display: flex;
+  flex: 1 1 0;
+  justify-content: center;
+  min-width: 0;
+}
+
+.drift-game-main > .drift-level {
+  flex: 0 1 auto;
+  margin: 0;
+}
+
+.drift-game-back {
+  flex: none;
+}
+
+@media (max-width: 700px) {
+  .drift-game-row {
+    flex-direction: column;
+  }
+
+  .drift-game-main {
+    width: 100%;
+  }
+
+  .drift-game-main > .drift-level {
+    flex: 1 1 auto;
+  }
+}
+
+/* Hover for the yellow buttons in the game (Start, Play again, Retry): a lighter yellow. */
+.drift-level .drift-start:hover:not(:disabled) {
+  background: var(--drift-ui-key-active-hover);
+}

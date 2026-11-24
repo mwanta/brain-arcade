@@ -98,4 +98,19 @@ describe('Quick Match API lifecycle', () => {
     expect(client.finishGamePlay).not.toHaveBeenCalled();
     expect(client.endSession).toHaveBeenCalledTimes(2);
   });
+
+  it('closes an abandoned session without finishing its play', async () => {
+    await run.start(null);
+    await run.abandon({ keepalive: true });
+    expect(client.endSession).toHaveBeenCalledWith(77, { keepalive: true });
+    expect(client.finishGamePlay).not.toHaveBeenCalled();
+  });
+
+  it('allows cleanup before start and tolerates a failed best-effort close', async () => {
+    await run.abandon();
+    expect(client.endSession).not.toHaveBeenCalled();
+    await run.start(null);
+    client.endSession.mockRejectedValue(new Error('offline'));
+    await expect(run.abandon()).resolves.toBeUndefined();
+  });
 });

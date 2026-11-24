@@ -20,6 +20,7 @@ frontend/src/
   api/             backend calls (client.js fetch wrapper + one file per resource)
   components/      one component per file
   pages/           compose components into pages
+  games/drift/     Drift's game logic, tutorial and tests
 ```
 
 ## Setup
@@ -44,13 +45,25 @@ frontend/src/
 
 5. **Formatting:** `make format` fixes formatting (ruff for Python, Prettier for the frontend). `make format-check` only reports, and CI runs it.
 
+## Games
+
+**Drift** (`frontend/src/games/drift/`, page in `frontend/src/pages/DriftGamePage.jsx`) is mounted at `/drift/*` and needs login.
+
+- `/drift` is the how-to-play tutorial, with a Start Game button.
+- `/drift/play` is the game: 10 levels of 5 rounds each, with 5 lives for the whole game. Other paths go back to `/drift`.
+- Plays are saved: one backend session per sitting (it ends when the player leaves `/drift/play` or closes the page), one game play per game, and one level attempt per finished level. The database score is the last level fully passed.
+- The round count and the lives come from the game, so Drift's levels in `seed.sql` have no `trial_count` or `max_errors` settings. `time_limit` is the time allowed per round.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for conventions and how to add a new table.
 
 ## Quick Match (processing speed)
 
-Log in, then choose **Play** in the navigation or visit `/games/quick-match`.
+Use the site's existing login, then choose **Quick Match** in the navigation or visit
+`/games/quick-match`. This game uses the shared `CurrentPlayerContext`, `RequireLogin`,
+API wrappers and `/stats` page. Its own page contains instructions, gameplay and a short
+end-of-game summary with a link to the shared stats.
 Inspired by [Lumosity's Speed Match](https://www.lumosity.com/en/brain-games/speed-match/),
 the player sees one symbol at a time and decides whether it matches the immediately
 previous symbol. Left arrow / **Different** and right arrow / **Same** work on every
@@ -64,7 +77,8 @@ Stopping during a level records an unsuccessful attempt. Each sequence has an eq
 number of matching and different comparisons, shuffled for each attempt.
 
 Existing databases can load `backend/database/quick_match_catalog.sql` through the
-MySQL client to add the levels without rebuilding the database. New databases get
+MySQL client to add the levels and register the `trial_count` setting without rebuilding
+the database. New databases get
 the same configuration from `seed.sql`. The game also supports the original two-level
 catalog, using 12 comparisons when `trial_count` is absent. Settings are loaded from
 the API and IDs are resolved from the catalog.
@@ -90,8 +104,10 @@ total answering time alongside the per-comparison deadline.
 Level results are saved before advancement. Failed writes offer a retry, and a readback
 of the original attempt timestamp prevents duplicate results after a lost POST response.
 Finishing can also be retried after a lost response. **Save and finish** makes the play
-eligible for the existing stats. Navigating away during play leaves an unfinished play,
-which the stats exclude. The username-only login continues to be held in memory.
+eligible for the existing stats. Navigating away or closing the page sends a best-effort
+session close, matching the site's session lifecycle. The play stays unfinished and the
+stats exclude it. If closing fails, the backend's stale-session cleanup handles it later.
+The username-only login continues to be held in memory.
 
 ## API
 
@@ -122,7 +138,7 @@ Errors return `{error, details}` with 400 (validation), 404 (not found) or 409 (
 
 | Method | Path | Body / notes |
 |---|---|---|
-| POST | /api/sessions | `{player_id}` |
+| POST | /api/sessions | `{player_id}`; also tidies the player's other open sessions that have been quiet for 2 hours: one with a check-in or a finished play is ended at its last activity, any other is deleted (see [SCHEMA.md](SCHEMA.md)) |
 | GET | /api/sessions/:id | |
 | POST | /api/sessions/:id/end | 409 if already ended |
 | GET | /api/players/:id/sessions | newest first |

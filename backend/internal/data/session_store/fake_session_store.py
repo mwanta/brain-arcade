@@ -32,3 +32,19 @@ class FakeSessionStore:
             session = replace(session, ended_at=session.started_at + timedelta(minutes=20))
             self._sessions[session_id] = session
         return session
+
+    def end_at(self, session_id, ended_at):
+        session = self._sessions.get(session_id)
+        if session and session.ended_at is None:
+            session = replace(session, ended_at=ended_at)
+            self._sessions[session_id] = session
+        return session
+
+    def delete_if_empty(self, session_id):
+        """Deletes an open session. The fake cannot see plays or check-ins (other stores), so the
+        caller is trusted to have checked that the session is empty; the real store checks too."""
+        session = self._sessions.get(session_id)
+        if session is None or session.ended_at is not None:
+            return False
+        del self._sessions[session_id]
+        return True

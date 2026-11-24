@@ -84,6 +84,17 @@ export class QuickMatchRun {
     }
   }
 
+  // Follow the site's session lifecycle when leaving the game. Keep an
+  // unfinished play unfinished so the shared stats exclude it.
+  async abandon({ keepalive = false } = {}) {
+    if (this.sessionId === null) return;
+    try {
+      await this.client.endSession(this.sessionId, { keepalive });
+    } catch {
+      // The site's stale-session cleanup handles a failed best-effort close.
+    }
+  }
+
   async finish() {
     let play = await this.client.getGamePlay(this.playId);
     if (play.finished_at === null) {

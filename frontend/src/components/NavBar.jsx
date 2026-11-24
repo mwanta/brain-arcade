@@ -15,8 +15,9 @@ export default function NavBar() {
       <span className="brand">Brain Arcade</span>
       {player && (
         <nav aria-label="Main navigation">
-          <NavLink to="/games/quick-match">Play</NavLink>
-          <NavLink to="/stats">My stats</NavLink>
+          <NavLink to="/drift">Drift</NavLink>
+          <NavLink to="/games/quick-match">Quick Match</NavLink>
+          <NavLink to="/stats">Stats</NavLink>
         </nav>
       )}
       {player && (

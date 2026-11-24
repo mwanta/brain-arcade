@@ -19,19 +19,19 @@ INSERT INTO game (game_id, domain_id, name, instructions) VALUES
     (1, 1, 'Sequence Recall', 'Watch the tiles light up, then tap them back in the same order.'),
     (2, 2, 'Odd One Out',     'Tap the single shape that differs from the rest before time runs out.'),
     (3, 3, 'Quick Match',     'Remember the first symbol. For each new symbol, press right for Same or left for Different compared with the immediately previous symbol. Complete every comparison within the per-symbol time limit and stay within the error allowance to pass. Wrong answers and timeouts each count as one error.'),
-    (4, 4, 'Drift',           'Follow the car with its headlights on. If it is driving, swipe the way it faces. If it is drifting, with tire smoke and skid marks, swipe the way it moves across the screen.');
+    (4, 4, 'Drift',           'Follow the cars. If a red car is driving, tap the arrow for the way it is moving. If a blue car is drifting, with tire smoke and skid marks, tap the arrow for the way it is facing. Ignore the grey cars, they are only there to distract you.');
 
 INSERT INTO setting_type (setting_type_id, name, unit, description) VALUES
     (1,  'sequence_length',     'items',  'Number of items the player must remember.'),
-    (2,  'time_limit',          'ms',     'Time allowed to answer; slower counts as a fail.'),
+    (2,  'time_limit',          'ms',     'Time allowed to answer (per round in Drift); slower counts as a fail.'),
     (3,  'grid_size',           'cells',  'Number of cells on the board.'),
-    (4,  'max_errors',          'errors', 'Most errors allowed while still passing the level.'),
-    (5,  'trial_count',         'trials', 'Number of trials in the level.'),
-    (6,  'switch_probability',  'ratio',  'Chance the lit car switches between driving and drifting from one trial to the next.'),
-    (7,  'car_count',           'cars',   'Cars on the road at once.'),
+    (4,  'max_errors',          'errors', 'Most errors allowed while still passing the level (not used by Drift, which gives lives instead).'),
+    (5,  'trial_count',         'trials', 'Number of comparisons per Quick Match level.'),
+    (6,  'switch_probability',  'ratio',  'Chance the cars switch between driving and drifting from one round to the next.'),
+    (7,  'car_count',           'cars',   'Cars to follow on the road at once.'),
     (8,  'move_speed',          'px/s',   'How fast the cars move across the screen.'),
-    (9,  'conflict_ratio',      'ratio',  'Share of trials where the lit car''s facing and movement directions differ.'),
-    (10, 'mixed_traffic',       'flag',   '0: all cars are lit and identical. 1: only one car is lit; the others are distractors.');
+    (9,  'conflict_ratio',      'ratio',  'Share of rounds where the cars'' facing and movement directions differ.'),
+    (10, 'distractor_count',    'cars',   'Grey cars that drive straight the opposite way to the cars to follow, as distractions; 0 for none.');
 
 INSERT INTO level (level_id, game_id, level_number) VALUES
     (1, 1, 1), (2, 1, 2), (3, 1, 3),
@@ -63,19 +63,21 @@ INSERT INTO level_setting (level_id, setting_type_id, setting_value) VALUES
     (24, 2,  600), (24, 4, 1), (24, 5, 12),
     (25, 2,  500), (25, 4, 1), (25, 5, 12),
     (26, 2,  400), (26, 4, 1), (26, 5, 12),
-    -- Drift, levels 1-5 (all cars lit): more cars, faster, more switching and conflict, less time
-    -- columns: time_limit, max_errors, trial_count, switch_probability, car_count, move_speed, conflict_ratio, mixed_traffic
-    (9,  2, 3000), (9,  4, 4), (9,  5, 20), (9,  6, 0.20), (9,  7, 1), (9,  8,  60), (9,  9, 0.30), (9, 10, 0),
-    (10, 2, 2800), (10, 4, 4), (10, 5, 20), (10, 6, 0.25), (10, 7, 2), (10, 8,  70), (10, 9, 0.35), (10, 10, 0),
-    (11, 2, 2600), (11, 4, 4), (11, 5, 24), (11, 6, 0.30), (11, 7, 3), (11, 8,  80), (11, 9, 0.40), (11, 10, 0),
-    (12, 2, 2400), (12, 4, 3), (12, 5, 24), (12, 6, 0.35), (12, 7, 4), (12, 8,  90), (12, 9, 0.45), (12, 10, 0),
-    (13, 2, 2200), (13, 4, 3), (13, 5, 28), (13, 6, 0.40), (13, 7, 5), (13, 8, 100), (13, 9, 0.50), (13, 10, 0),
-    -- Drift, levels 6-10 (mixed traffic: one lit car among distractors); level 6 eases back, then ramps again
-    (14, 2, 2600), (14, 4, 4), (14, 5, 24), (14, 6, 0.40), (14, 7, 3), (14, 8,  80), (14, 9, 0.50), (14, 10, 1),
-    (15, 2, 2400), (15, 4, 4), (15, 5, 28), (15, 6, 0.45), (15, 7, 4), (15, 8,  90), (15, 9, 0.55), (15, 10, 1),
-    (16, 2, 2200), (16, 4, 3), (16, 5, 28), (16, 6, 0.50), (16, 7, 5), (16, 8, 100), (16, 9, 0.60), (16, 10, 1),
-    (17, 2, 2000), (17, 4, 3), (17, 5, 32), (17, 6, 0.55), (17, 7, 6), (17, 8, 110), (17, 9, 0.65), (17, 10, 1),
-    (18, 2, 1800), (18, 4, 2), (18, 5, 32), (18, 6, 0.60), (18, 7, 7), (18, 8, 120), (18, 9, 0.70), (18, 10, 1);
+    -- Drift, levels 1-5 (no distractors): more cars, faster, more switching and conflict, less time
+    -- columns: time_limit (per round), switch_probability, car_count, move_speed, conflict_ratio, distractor_count
+    -- Round count and mistakes come from the game, not the database: 5 rounds per level, 5 lives per game.
+    (9,  2, 3000), (9,  6, 0.20), (9,  7, 3), (9,  8,  60), (9,  9, 0.30), (9, 10, 0),
+    (10, 2, 2800), (10, 6, 0.25), (10, 7, 4), (10, 8,  70), (10, 9, 0.35), (10, 10, 0),
+    (11, 2, 2600), (11, 6, 0.30), (11, 7, 6), (11, 8,  80), (11, 9, 0.40), (11, 10, 0),
+    (12, 2, 2400), (12, 6, 0.35), (12, 7, 8), (12, 8,  90), (12, 9, 0.45), (12, 10, 0),
+    (13, 2, 2200), (13, 6, 0.40), (13, 7, 10), (13, 8, 100), (13, 9, 0.50), (13, 10, 0),
+    -- Drift, levels 6-10 (grey distractor cars driving the other way): level 6 starts slow and sparse,
+    -- then each level adds speed, cars and distractors
+    (14, 2, 2600), (14, 6, 0.40), (14, 7, 3), (14, 8,  50), (14, 9, 0.50), (14, 10, 2),
+    (15, 2, 2400), (15, 6, 0.45), (15, 7, 4), (15, 8,  70), (15, 9, 0.55), (15, 10, 3),
+    (16, 2, 2200), (16, 6, 0.50), (16, 7, 5), (16, 8,  90), (16, 9, 0.60), (16, 10, 4),
+    (17, 2, 2000), (17, 6, 0.55), (17, 7, 6), (17, 8, 110), (17, 9, 0.65), (17, 10, 5),
+    (18, 2, 1800), (18, 6, 0.60), (18, 7, 8), (18, 8, 130), (18, 9, 0.70), (18, 10, 6);
 
 -- ---- sessions and gameplay --------------------------------------------------
 INSERT INTO session (session_id, player_id, started_at, ended_at) VALUES
@@ -195,6 +197,18 @@ WHERE se.session_id > 10000
 -- The score comes from a per-player skill plus education, practice (later
 -- sessions do better), the check-in (sleep, stress, exercise), a decline with
 -- age on the processing-speed game, and some noise.
+--
+-- Games 1-3: a level's duration is a fraction of its time limit and its errors
+-- come from max_errors (a passed level stays within it, a failed one goes over).
+--
+-- Drift (game 4) plays differently: a level is 5 rounds, time_limit is per
+-- round, and there is no max_errors, only 5 lives for the whole play.
+--   * Passed level: duration is about 5 rounds' worth of time, and 0 or 1
+--     mistakes. The play's first 4 mistakes are kept, so a passed level always
+--     leaves a life.
+--   * Failed level (only if score < 10): it ends when the last life is lost, so
+--     the play's mistakes total exactly 5. It gets whatever the passed levels
+--     left, and 1 to 5 rounds were played (at least one per mistake).
 INSERT INTO level_attempt (play_id, level_id, started_at, passed, duration_ms, error_count)
 WITH play_score AS (
     SELECT gp.play_id, gp.game_id, gp.started_at, skill,
@@ -217,23 +231,52 @@ WITH play_score AS (
     JOIN (SELECT game_id, MAX(level_number) AS max_level FROM level GROUP BY game_id) gm
         ON gm.game_id = gp.game_id
     WHERE gp.play_id > 100000
+),
+levels_played AS (
+    -- One row per level the play attempted, with Drift's mistake on passed levels.
+    SELECT ps.play_id, ps.game_id, ps.started_at, ps.skill, ps.score,
+           l.level_id, l.level_number,
+           time_limit.setting_value AS time_limit,
+           max_errors.setting_value AS max_errors,
+           l.level_number <= ps.score AS passed,
+           IF(ps.game_id = 4 AND l.level_number <= ps.score
+                  AND MOD(ps.play_id * 3 + l.level_number * 7, 3) = 0, 1, 0) AS drift_mistake
+    FROM play_score ps
+    JOIN level l ON l.game_id = ps.game_id AND l.level_number <= ps.score + 1
+    JOIN level_setting time_limit ON time_limit.level_id = l.level_id AND time_limit.setting_type_id = 2
+    LEFT JOIN level_setting max_errors ON max_errors.level_id = l.level_id AND max_errors.setting_type_id = 4
+),
+drift_mistakes AS (
+    SELECT lp.*,
+           SUM(drift_mistake) OVER (PARTITION BY play_id ORDER BY level_number) AS mistakes_through,
+           LEAST(4, SUM(drift_mistake) OVER (PARTITION BY play_id))             AS mistakes_kept
+    FROM levels_played lp
+),
+drift_errors AS (
+    SELECT dm.*,
+           CASE WHEN passed THEN IF(mistakes_through <= 4, drift_mistake, 0)
+                ELSE 5 - mistakes_kept
+           END AS drift_error_count
+    FROM drift_mistakes dm
 )
-SELECT ps.play_id,
-       l.level_id,
-       ps.started_at + INTERVAL (l.level_number * 20) SECOND,
-       l.level_number <= ps.score,
+SELECT de.play_id,
+       de.level_id,
+       de.started_at + INTERVAL (de.level_number * 20) SECOND,
+       de.passed,
        CASE
-           WHEN l.level_number <= ps.score
-               THEN ROUND(time_limit.setting_value
-                          * LEAST(0.95, 0.45 + 0.4 * (1 - ps.skill) + MOD(ps.play_id * 7 + l.level_number * 13, 20) / 100))
-           WHEN MOD(ps.play_id, 2) = 0 THEN time_limit.setting_value  -- ran out of time
-           ELSE ROUND(time_limit.setting_value * 0.8)                -- too many errors
+           WHEN de.game_id = 4
+               THEN ROUND(IF(de.passed, 5, LEAST(5, GREATEST(de.drift_error_count, 1 + MOD(de.play_id, 5))))
+                          * de.time_limit
+                          * LEAST(0.9, 0.4 + 0.4 * (1 - de.skill) + MOD(de.play_id * 7 + de.level_number * 13, 20) / 200))
+           WHEN de.passed
+               THEN ROUND(de.time_limit
+                          * LEAST(0.95, 0.45 + 0.4 * (1 - de.skill) + MOD(de.play_id * 7 + de.level_number * 13, 20) / 100))
+           WHEN MOD(de.play_id, 2) = 0 THEN de.time_limit  -- ran out of time
+           ELSE ROUND(de.time_limit * 0.8)                -- too many errors
        END,
        CASE
-           WHEN l.level_number <= ps.score THEN MOD(ps.play_id + l.level_number, max_errors.setting_value + 1)
-           ELSE max_errors.setting_value + 1 + MOD(ps.play_id, 2)
+           WHEN de.game_id = 4 THEN de.drift_error_count
+           WHEN de.passed THEN MOD(de.play_id + de.level_number, de.max_errors + 1)
+           ELSE de.max_errors + 1 + MOD(de.play_id, 2)
        END
-FROM play_score ps
-JOIN level l ON l.game_id = ps.game_id AND l.level_number <= ps.score + 1
-JOIN level_setting time_limit ON time_limit.level_id = l.level_id AND time_limit.setting_type_id = 2
-JOIN level_setting max_errors ON max_errors.level_id = l.level_id AND max_errors.setting_type_id = 4;
+FROM drift_errors de;

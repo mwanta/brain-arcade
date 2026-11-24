@@ -16,6 +16,10 @@ INSERT INTO quick_match_config VALUES
 
 START TRANSACTION;
 
+INSERT INTO setting_type (name, unit, description)
+VALUES ('trial_count', 'trials', 'Number of comparisons per Quick Match level.')
+ON DUPLICATE KEY UPDATE name = VALUES(name);
+
 UPDATE game
 SET instructions = 'Remember the first symbol. For each new symbol, press right for Same or left for Different compared with the immediately previous symbol. Complete every comparison within the per-symbol time limit and stay within the error allowance to pass. Wrong answers and timeouts each count as one error.'
 WHERE name = 'Quick Match';

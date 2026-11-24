@@ -6,6 +6,7 @@ import Layout from './components/Layout.jsx';
 import RequireLogin from './components/RequireLogin.jsx';
 import { CurrentPlayerProvider } from './context/CurrentPlayerContext.jsx';
 import LoginPage from './pages/LoginPage.jsx';
+import DriftGamePage from './pages/DriftGamePage.jsx';
 import PlayerStatsPage from './pages/PlayerStatsPage.jsx';
 import QuickMatchPage from './pages/QuickMatchPage.jsx';
 import './styles.css';
@@ -28,6 +29,12 @@ ReactDOM.createRoot(document.getElementById('root')).render(
               path="/stats"
               element={
                 <RequireLogin>{(playerId) => <PlayerStatsPage playerId={playerId} />}</RequireLogin>
+              }
+            />
+            <Route
+              path="/drift/*"
+              element={
+                <RequireLogin>{(playerId) => <DriftGamePage playerId={playerId} />}</RequireLogin>
               }
             />
             <Route path="*" element={<Navigate to="/stats" replace />} />
