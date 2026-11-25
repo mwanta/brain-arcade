@@ -56,13 +56,9 @@ describe('Quick Match rules', () => {
     expect(() => prepareLevels({ ...game, game_id: 99 })).toThrow('belong to this game');
   });
 
-  it('keeps the ten seed levels and existing-database upgrade in agreement', () => {
+  it('seeds ten progressively faster levels with twelve comparisons each', () => {
     const seed = readFileSync(
       new URL('../../../../backend/database/seed.sql', import.meta.url),
-      'utf8'
-    );
-    const upgrade = readFileSync(
-      new URL('../../../../backend/database/quick_match_catalog.sql', import.meta.url),
       'utf8'
     );
     const seedLevels = seed.split('INSERT INTO level (')[1].split(';')[0];
@@ -79,13 +75,14 @@ describe('Quick Match rules', () => {
         return [Number(number), values[2], values[4], values[5]];
       })
       .sort((a, b) => a[0] - b[0]);
-    const upgradeRows = [...upgrade.matchAll(/\((\d+),\s*(\d+),\s*(\d+),\s*(\d+)\)/g)].map((row) =>
-      row.slice(1).map(Number)
-    );
-    expect(catalog).toEqual(upgradeRows);
+    // CI runs the upgrade twice against MySQL and checks the resulting catalog
+    // in game_store_test.py, so this test only checks the fresh-database seed.
+    expect(catalog.map((row) => row[1])).toEqual([
+      2000, 1200, 1100, 1000, 900, 800, 700, 600, 500, 400,
+    ]);
+    expect(catalog.map((row) => row[2])).toEqual([2, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
     expect(catalog).toHaveLength(10);
     expect(seed).toContain("(5,  'trial_count'");
-    expect(upgrade).toContain('INSERT INTO setting_type (name, unit, description)');
     expect(catalog.every((row, index) => row[0] === index + 1 && row[3] === 12)).toBe(true);
     expect(catalog.slice(1).every((row, index) => row[1] < catalog[index][1])).toBe(true);
   });
