@@ -78,7 +78,8 @@ number of matching and different comparisons, shuffled for each attempt.
 
 Existing databases can load `backend/database/quick_match_catalog.sql` through the
 MySQL client to add the levels and register the `trial_count` setting without rebuilding
-the database. New databases get
+the database. The script writes directly to the existing tables; it creates no tables
+and requires no schema changes. It can be run again safely. New databases get
 the same configuration from `seed.sql`. The game also supports the original two-level
 catalog, using 12 comparisons when `trial_count` is absent. Settings are loaded from
 the API and IDs are resolved from the catalog.
