@@ -4,6 +4,7 @@ and the cohort queries that compare a player with players like them.
 Only finished game plays count toward stats.
 """
 
+import json
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from typing import Optional
@@ -356,33 +357,47 @@ class ConditionImpact:
 @dataclass(frozen=True)
 class LevelPerformance:
     """The player's attempts at one level against the cohort's. avg_pass_ms only counts
-    passed attempts; pass_rate_percentile is the percentage of members with a lower pass rate."""
+    passed attempts; pass_rate_percentile is the percentage of members with a lower pass rate.
+    settings is every level_setting as {name, value, unit}, in setting_type order;
+    trial_count is None when the game doesn't store one."""
 
     game_id: int
     game_name: str
     level_number: int
-    time_limit_ms: Optional[float]
-    max_errors: Optional[float]
+    settings: tuple
+    trial_count: Optional[float]
     attempts: int
     pass_rate: float
+    avg_errors: Optional[float]
     avg_pass_ms: Optional[float]
     cohort_players: int
     cohort_pass_rate: float
+    cohort_avg_errors: Optional[float]
     cohort_avg_pass_ms: Optional[float]
     pass_rate_percentile: float
+
+    @classmethod
+    def from_row(cls, row):
+        """Builds one from a level_performance.sql row, whose settings column is JSON."""
+        settings = sorted(json.loads(row["settings"] or "[]"), key=lambda st: st["id"])
+        return cls(**{**row, "settings": tuple(settings)})
 
     def to_json(self):
         return {
             "game_id": self.game_id,
             "game_name": self.game_name,
             "level_number": self.level_number,
-            "time_limit_ms": number(self.time_limit_ms),
-            "max_errors": number(self.max_errors),
+            "settings": [
+                {"name": st["name"], "value": number(st["value"]), "unit": st["unit"]} for st in self.settings
+            ],
+            "trial_count": number(self.trial_count),
             "attempts": self.attempts,
             "pass_rate": _percent(self.pass_rate),
+            "avg_errors": number(self.avg_errors),
             "avg_pass_ms": number(self.avg_pass_ms),
             "cohort_players": self.cohort_players,
             "cohort_pass_rate": _percent(self.cohort_pass_rate),
+            "cohort_avg_errors": number(self.cohort_avg_errors),
             "cohort_avg_pass_ms": number(self.cohort_avg_pass_ms),
             "pass_rate_percentile": _percent(self.pass_rate_percentile),
         }

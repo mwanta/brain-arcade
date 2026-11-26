@@ -175,11 +175,15 @@ JOIN (SELECT game_id, MAX(level_number) AS top_level FROM level GROUP BY game_id
     ON top.game_id = gp.game_id
 WHERE gp.finished_at IS NOT NULL;
 
--- Each level's time limit and error allowance as columns.
+-- Every setting of a level as a JSON array of {id, name, value, unit}, from
+-- level_setting and setting_type, so any game's rules can be shown without
+-- naming its settings. trial_count (trials in a level) is pulled out for
+-- per-trial times; it is NULL for games that don't store it.
 CREATE VIEW level_rule AS
 SELECT ls.level_id,
-       MAX(CASE WHEN st.name = 'time_limit' THEN ls.setting_value END) AS time_limit_ms,
-       MAX(CASE WHEN st.name = 'max_errors' THEN ls.setting_value END) AS max_errors
+       JSON_ARRAYAGG(JSON_OBJECT('id', st.setting_type_id, 'name', st.name,
+                                 'value', ls.setting_value, 'unit', st.unit)) AS settings,
+       MAX(CASE WHEN st.name = 'trial_count' THEN ls.setting_value END)       AS trial_count
 FROM level_setting ls
 JOIN setting_type st ON st.setting_type_id = ls.setting_type_id
 GROUP BY ls.level_id;

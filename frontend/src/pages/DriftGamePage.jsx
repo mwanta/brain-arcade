@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { getGame, listGames } from '../api/catalogApi.js';
 import { finishGamePlay, recordLevelAttempt, startGamePlay } from '../api/gamePlaysApi.js';
-import { endSession, startSession } from '../api/sessionsApi.js';
+import { createCheckIn, endSession, startSession } from '../api/sessionsApi.js';
 import ErrorMessage from '../components/ErrorMessage.jsx';
+import SessionCheckIn from '../components/SessionCheckIn.jsx';
+import { EMPTY_CHECK_IN, toCheckIn } from '../components/checkIn.js';
 import DriftGame from '../games/drift/DriftGame.jsx';
 import DriftScore from '../games/drift/DriftScore.jsx';
 import DriftTutorial from '../games/drift/DriftTutorial.jsx';
@@ -46,6 +48,7 @@ export default function DriftGamePage({ playerId }) {
   const [playing, setPlaying] = useState(null); // { recorder, seed, run } while a game is on
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState(null);
+  const [checkIn, setCheckIn] = useState(EMPTY_CHECK_IN); // saved when a session opens
 
   const recorderRef = useRef(null);
   const startingRef = useRef(false);
@@ -114,6 +117,9 @@ export default function DriftGamePage({ playerId }) {
         sessionId: sessionRef.current,
       });
       try {
+        // A new session gets the check-in, if the player answered any of it.
+        const answers = opened && toCheckIn(checkIn);
+        if (answers) await createCheckIn(sessionRef.current, answers);
         await recorder.begin();
         return recorder;
       } catch (error) {
@@ -195,6 +201,7 @@ export default function DriftGamePage({ playerId }) {
         <h1>Drift</h1>
         <p>{DESCRIPTION}</p>
         <ErrorMessage error={startError} />
+        <SessionCheckIn value={checkIn} onChange={setCheckIn} disabled={starting} />
         <DriftTutorial
           onStart={startNewGame}
           startLabel={startError ? 'Try again' : 'Start Game'}

@@ -51,6 +51,7 @@ frontend/src/
 
 - `/drift` is the how-to-play tutorial, with a Start Game button.
 - `/drift/play` is the game: 10 levels of 5 rounds each, with 5 lives for the whole game. Other paths go back to `/drift`.
+- `/drift` also has an optional check-in (sleep, caffeine, stress, exercise). It is saved as the `check_in` of the session the next Start Game opens, the same way Quick Match's is.
 - Plays are saved: one backend session per sitting (it ends when the player leaves `/drift/play` or closes the page), one game play per game, and one level attempt per finished level. The database score is the last level fully passed.
 - The round count and the lives come from the game, so Drift's levels in `seed.sql` have no `trial_count` or `max_errors` settings. `time_limit` is the time allowed per round.
 
@@ -99,8 +100,8 @@ time spent answering comparisons, including timeouts, excluding the reference di
 transitions, feedback and API waits. `error_count` totals wrong answers and timeouts.
 `started_at` is the UTC timestamp of the first answerable symbol. `passed` requires
 completing all comparisons within the error allowance. Trial responses are aggregated
-in the browser into these existing fields. The level-performance stats therefore show
-total answering time alongside the per-comparison deadline.
+in the browser into these existing fields. The stats page's level table divides
+`duration_ms` by the level's `trial_count` to show the average time per comparison.
 
 Level results are saved before advancement. Failed writes offer a retry, and a readback
 of the original attempt timestamp prevents duplicate results after a lost POST response.
@@ -182,6 +183,6 @@ Errors return `{error, details}` with 400 (validation), 404 (not found) or 409 (
 | GET | /api/players/:id/stats/cohort/breakdown | per game: the cohort split by `group_by` (`age_group`, `gender`, `occupation` (default) or `education_level`), with each group's size, average and rank, and `is_player_group` |
 | GET | /api/players/:id/stats/cohort/learning-curve | per game and play number (1 to `max_play_number`, default 10): the player's score vs. the peer average on their play with the same number |
 | GET | /api/players/:id/stats/cohort/conditions | per check-in factor (`sleep`, `caffeine`, `stress`, `exercise`) and bucket: plays and average completion (share of the game's levels passed) for the player and for peers |
-| GET | /api/players/:id/stats/cohort/levels | per level the player attempted: attempts, pass rate and average time on passed attempts vs. the cohort, the level's time limit and error allowance, and the player's pass-rate percentile |
+| GET | /api/players/:id/stats/cohort/levels | per level the player attempted: attempts, pass rate, average errors and average time on passed attempts vs. the cohort, and the player's pass-rate percentile. Also the level's `settings` (every `level_setting` as `{name, value, unit}`) and its `trial_count` (`null` if the game doesn't store one). |
 
 Percentages are 0-100. "Peers" means the cohort minus the player. The filtering is done by the `load_cohort` stored procedure (see [SCHEMA.md](SCHEMA.md)).

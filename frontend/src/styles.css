@@ -234,6 +234,32 @@ button.ghost:not(:disabled):hover {
   border-radius: 999px;
   background: rgb(255 255 255 / 0.16);
 }
+.nowrap {
+  white-space: nowrap;
+}
+.th-note {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+.setting-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  max-width: 22rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.setting {
+  font-size: 0.75rem;
+  white-space: nowrap;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
+}
 /* filters */
 .filters {
   background: var(--surface);
@@ -914,4 +940,16 @@ button.ghost:not(:disabled):hover {
 .login-form .form select {
   color: var(--text-primary);
   font-size: 0.95rem;
+}
+
+/* optional session check-in shown before a game starts */
+.session-check-in {
+  margin: 1rem 0;
+}
+.session-check-in summary {
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.session-check-in .filter-grid {
+  margin-top: 0.75rem;
 }
