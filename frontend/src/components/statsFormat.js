@@ -9,6 +9,17 @@ export const num = (v, digits = 2) =>
 export const pct = (v) => (missing(v) ? '—' : `${num(v, 1)}%`);
 export const seconds = (ms) => (missing(ms) ? '—' : `${(ms / 1000).toFixed(2)} s`);
 
+// One level setting ({name, value, unit} from setting_type) in words, e.g.
+// "time limit 2.00 s", "switch probability 20%", "max errors 1". The unit is left
+// off when the name already says it (max_errors in 'errors').
+export function settingLabel({ name, value, unit }) {
+  const label = name.replaceAll('_', ' ');
+  if (unit === 'ms') return `${label} ${seconds(value)}`;
+  if (unit === 'ratio') return `${label} ${pct(value * 100)}`;
+  const named = !unit || label.includes(unit.replace(/s$/, ''));
+  return `${label} ${num(value)}${named ? '' : ` ${unit}`}`;
+}
+
 // Splits stats rows into one entry per game, keeping the API's order.
 export function byGame(rows) {
   const games = new Map();

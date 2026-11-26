@@ -1,6 +1,7 @@
-"""Stats SQL against real data. Test players are born in 1930 so their age group
-(90s) contains no seed players and the comparison only sees players made here.
-Cohort tests pass match=age_group for the same reason."""
+"""Stats SQL against real data, on the implemented games (Quick Match and Drift,
+10 levels each). Test players are born in 1930 so their age group (90s) contains
+no seed players and the comparison only sees players made here. Cohort tests
+pass match=age_group for the same reason."""
 
 from datetime import date
 
@@ -8,6 +9,7 @@ import pytest
 
 from internal.data.check_in_store import CheckInStore
 from internal.data.game_play_store import GamePlayStore
+from internal.data.game_store import GameStore
 from internal.data.level_attempt_store import LevelAttemptStore
 from internal.data.level_store import LevelStore
 from internal.data.session_store import SessionStore
@@ -17,26 +19,33 @@ from internal.models.level_attempt import CreateLevelAttemptRequest
 from internal.models.stats import CohortQuery, StatsQuery
 
 BIRTHDAY = date(1930, 6, 1)
+QUICK_MATCH, DRIFT = "Quick Match", "Drift"
+PASS_MS, FAIL_MS, FAIL_ERRORS = 6000, 3000, 2
 
 
 @pytest.fixture
-def play_game(db):
-    """play_game(player, passed_levels, finish=True, check_in=None) -> play with that many
-    levels passed on game 1, optionally in a session with a check-in."""
-    levels = LevelStore(db).list_by_game(1)
+def game_ids(db):
+    return {g.name: g.game_id for g in GameStore(db).list_all()}
+
+
+@pytest.fixture
+def play_game(db, game_ids):
+    """play_game(player, passed_levels, finish=True, check_in=None, game=QUICK_MATCH) -> play
+    with that many levels passed (in PASS_MS, no errors) and the next one failed (in FAIL_MS,
+    with FAIL_ERRORS), optionally in a session with a check-in."""
     sessions, plays, attempts = SessionStore(db), GamePlayStore(db), LevelAttemptStore(db)
 
-    def play(player, passed_levels, finish=True, check_in=None):
+    def play(player, passed_levels, finish=True, check_in=None, game=QUICK_MATCH):
+        levels = LevelStore(db).list_by_game(game_ids[game])
         session = sessions.create(player.player_id)
         if check_in:
             CheckInStore(db).create(session.session_id, check_in)
-        game_play = plays.create(session.session_id, 1)
+        game_play = plays.create(session.session_id, game_ids[game])
         for lvl in levels[:passed_levels]:
-            attempts.create(game_play.play_id, CreateLevelAttemptRequest(lvl.level_id, True))
+            attempts.create(game_play.play_id, CreateLevelAttemptRequest(lvl.level_id, True, PASS_MS, 0))
         if passed_levels < len(levels):
-            attempts.create(
-                game_play.play_id, CreateLevelAttemptRequest(levels[passed_levels].level_id, False)
-            )
+            failed = CreateLevelAttemptRequest(levels[passed_levels].level_id, False, FAIL_MS, FAIL_ERRORS)
+            attempts.create(game_play.play_id, failed)
         return plays.finish(game_play.play_id) if finish else game_play
 
     return play
@@ -74,11 +83,11 @@ def test_age_group_comparison(db, players):
     assert cmp.percentile == 0.5  # beats 1 of the 2 others
 
 
-def test_filters(db, players):
+def test_filters(db, players, game_ids):
     store, me = StatsStore(db), players[0]
     assert store.score_history(me.player_id, StatsQuery(from_date=date(2999, 1, 1))) == []
     assert len(store.score_history(me.player_id, StatsQuery(from_date=date(2000, 1, 1)))) == 2
-    assert store.game_summaries(me.player_id, StatsQuery(game_id=2)) == []
+    assert store.game_summaries(me.player_id, StatsQuery(game_id=game_ids[DRIFT])) == []
     assert store.age_group_comparison(me.player_id, StatsQuery(to_date=date(2000, 1, 1))) == []
 
 
@@ -97,7 +106,7 @@ TIRED, RESTED = CreateCheckInRequest(hours_slept=5), CreateCheckInRequest(hours_
 
 @pytest.fixture
 def cohort(make_player, play_game):
-    """Four players in their 90s, all on game 1 (3 levels). Averages: me 1.5, a 3, b 0, c 1.
+    """Four players in their 90s, all on Quick Match. Averages: me 1.5, a 3, b 0, c 1.
     me      female  student  bachelor     scores 2 (tired) then 1 (rested)
     a       male    student  master       scores 3, 3 (rested)
     b       female  retired  high_school  scores 0
@@ -179,9 +188,10 @@ def test_condition_impact(db, cohort):
     rows = StatsStore(db).condition_impact(cohort[0].player_id, StatsQuery(), SAME_AGE)
     sleep = {r.bucket: r for r in rows if r.factor == "sleep"}
     assert set(sleep) == {"under_6h", "8h_plus"}  # b and c have no check-in
-    assert float(sleep["under_6h"].player_avg_completion) == dec(2 / 3)
-    assert float(sleep["8h_plus"].player_avg_completion) == dec(1 / 3)
-    assert int(sleep["8h_plus"].peer_plays) == 2 and float(sleep["8h_plus"].peer_avg_completion) == 1
+    # completion = levels passed / 10
+    assert float(sleep["under_6h"].player_avg_completion) == dec(0.2)
+    assert float(sleep["8h_plus"].player_avg_completion) == dec(0.1)
+    assert int(sleep["8h_plus"].peer_plays) == 2 and float(sleep["8h_plus"].peer_avg_completion) == dec(0.3)
     assert int(sleep["under_6h"].peer_plays) == 0
 
 
@@ -192,8 +202,25 @@ def test_level_performance(db, cohort):
         (2, 2, 0.5),
         (3, 1, 0),
     ]
-    level1 = rows[0]
+    level1, level2, level3 = rows
     assert level1.cohort_players == 4  # b attempted level 1 and failed
     assert float(level1.cohort_pass_rate) == dec(3 / 4)
-    assert level1.time_limit_ms is not None and level1.max_errors is not None
-    assert rows[2].avg_pass_ms is None  # never passed level 3
+    # The level's settings come straight from level_setting, in setting_type order.
+    rules = {st["name"]: float(st["value"]) for st in level1.settings}
+    assert rules == {"time_limit": 2000, "max_errors": 2, "trial_count": 12}
+    assert level1.trial_count == 12
+    assert float(level1.avg_pass_ms) == PASS_MS and float(level1.avg_errors) == 0
+    assert float(level1.cohort_avg_errors) == dec(FAIL_ERRORS / 4)  # only b failed level 1
+    assert float(level2.avg_errors) == dec(FAIL_ERRORS / 2)  # passed once, failed once
+    assert level3.avg_pass_ms is None  # never passed level 3
+
+
+def test_level_performance_settings_follow_the_game(db, make_player, play_game):
+    me = make_player(BIRTHDAY)
+    play_game(me, 1, game=DRIFT)
+    rows = StatsStore(db).level_performance(me.player_id, StatsQuery(), SAME_AGE)
+    assert [(r.game_name, r.level_number) for r in rows] == [(DRIFT, 1), (DRIFT, 2)]
+    names = [st["name"] for st in rows[0].settings]
+    assert "car_count" in names and "max_errors" not in names
+    assert rows[0].trial_count is None  # Drift's rounds come from the game
+    assert float(rows[1].avg_errors) == FAIL_ERRORS

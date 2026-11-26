@@ -67,7 +67,8 @@ class StatsStore:
 
     def level_performance(self, player_id, query, cohort):
         return [
-            LevelPerformance(**r) for r in self._fetch_cohort("level_performance", player_id, query, cohort)
+            LevelPerformance.from_row(r)
+            for r in self._fetch_cohort("level_performance", player_id, query, cohort)
         ]
 
     def _fetch(self, name, player_id, query):

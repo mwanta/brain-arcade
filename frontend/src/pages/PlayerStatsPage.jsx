@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { getPlayer } from '../api/playersApi.js';
-import { listGames } from '../api/catalogApi.js';
+import { getGameSummaries } from '../api/statsApi.js';
 import ErrorMessage from '../components/ErrorMessage.jsx';
 import PlayerStatsHeader from '../components/PlayerStatsHeader.jsx';
 import CohortFilters from '../components/CohortFilters.jsx';
@@ -23,7 +23,10 @@ export default function PlayerStatsPage({ playerId }) {
 
   useEffect(() => {
     getPlayer(playerId).then(setPlayer).catch(setError);
-    listGames().then(setGames).catch(setError);
+    // The games this player has finished a play of: the cohort stats only cover those.
+    getGameSummaries(playerId)
+      .then((rows) => setGames(rows.map((g) => ({ game_id: g.game_id, name: g.game_name }))))
+      .catch(setError);
   }, [playerId]);
 
   const sectionProps = { playerId, filters };

@@ -9,6 +9,7 @@ from internal.models.stats import (
     CohortComparison,
     CohortQuery,
     ConditionImpact,
+    LevelPerformance,
     ScoreBucket,
     StatsQuery,
 )
@@ -103,3 +104,29 @@ def test_score_bucket_and_condition_impact_to_json():
     assert b.to_json()["is_player_best"] is True
     c = ConditionImpact("sleep", "under_6h", Decimal("9"), Decimal("0.5"), Decimal("0"), None)
     assert c.to_json()["peer_avg_completion"] == 50 and c.to_json()["player_avg_completion"] is None
+
+
+def test_level_performance_from_row_sorts_settings_by_type():
+    row = {
+        "game_id": 3,
+        "game_name": "Quick Match",
+        "level_number": 1,
+        "settings": '[{"id": 5, "name": "trial_count", "value": 12.0, "unit": "trials"},'
+        ' {"id": 2, "name": "time_limit", "value": 2000.0, "unit": "ms"}]',
+        "trial_count": Decimal("12.00"),
+        "attempts": 2,
+        "pass_rate": Decimal("0.5"),
+        "avg_errors": Decimal("1.0"),
+        "avg_pass_ms": Decimal("6000"),
+        "cohort_players": 3,
+        "cohort_pass_rate": Decimal("0.75"),
+        "cohort_avg_errors": None,
+        "cohort_avg_pass_ms": None,
+        "pass_rate_percentile": 0.5,
+    }
+    out = LevelPerformance.from_row(row).to_json()
+    assert out["settings"] == [
+        {"name": "time_limit", "value": 2000, "unit": "ms"},
+        {"name": "trial_count", "value": 12, "unit": "trials"},
+    ]
+    assert (out["trial_count"], out["pass_rate"], out["cohort_avg_errors"]) == (12, 50.0, None)

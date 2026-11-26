@@ -91,31 +91,38 @@ INSERT INTO check_in (session_id, hours_slept, caffeine_drinks, stress_level, ex
     (2, 5.5, 3, 4, FALSE),
     (3, 7.0, 0, 1, TRUE);
 
+-- Gameplay covers the implemented games only: Quick Match (3) and Drift (4).
+-- Sequence Recall and Odd One Out stay in the catalog but have no plays yet.
 INSERT INTO game_play (play_id, session_id, game_id, started_at, finished_at) VALUES
-    (1, 1, 1, '2026-11-01 09:01:00', '2026-11-01 09:06:00'),
-    (2, 1, 2, '2026-11-01 09:07:00', '2026-11-01 09:12:00'),
-    (3, 2, 1, '2026-11-02 21:31:00', '2026-11-02 21:35:00'),
+    (1, 1, 3, '2026-11-01 09:01:00', '2026-11-01 09:06:00'),
+    (2, 1, 4, '2026-11-01 09:07:00', '2026-11-01 09:12:00'),
+    (3, 2, 3, '2026-11-02 21:31:00', '2026-11-02 21:35:00'),
     (4, 3, 3, '2026-11-01 12:11:00', '2026-11-01 12:15:00'),
-    (5, 4, 2, '2026-11-03 08:01:00', NULL);
+    (5, 4, 4, '2026-11-03 08:01:00', NULL);
 
+-- Quick Match: duration_ms is the total answering time over the level's 12
+-- comparisons, and error_count its wrong answers and timeouts.
+-- Drift: a level is 5 rounds, error_count is lives lost, and a play ends when
+-- the 5th life is lost.
 INSERT INTO level_attempt (play_id, level_id, started_at, passed, duration_ms, error_count) VALUES
-    -- play 1: Sequence Recall, passes levels 1-2, fails 3 -> score 2
-    (1, 1, '2026-11-01 09:01:05.000', TRUE,  9200, 0),
-    (1, 2, '2026-11-01 09:01:20.000', TRUE,  9800, 0),
-    (1, 3, '2026-11-01 09:01:40.000', FALSE, 8000, 2),
-    -- play 2: Odd One Out, passes 1-3 -> score 3
-    (2, 4, '2026-11-01 09:07:05.000', TRUE,  2100, 0),
-    (2, 5, '2026-11-01 09:07:15.000', TRUE,  3300, 0),
-    (2, 6, '2026-11-01 09:07:25.000', TRUE,  2900, 0),
-    -- play 3: tired session, fails level 2 twice -> score 1
-    (3, 1, '2026-11-02 21:31:05.000', TRUE,  9900, 0),
-    (3, 2, '2026-11-02 21:31:20.000', FALSE, 10000, 3),
-    (3, 2, '2026-11-02 21:31:40.000', FALSE, 10000, 2),
-    -- play 4: Quick Match, passes 1-2 -> score 2
-    (4, 7, '2026-11-01 12:11:05.000', TRUE,  1500, 0),
-    (4, 8, '2026-11-01 12:11:15.000', TRUE,  1100, 1),
-    -- play 5: in progress, failed level 1 so far -> score 0
-    (5, 4, '2026-11-03 08:01:05.000', FALSE, 5000, 1);
+    -- play 1: Quick Match, passes levels 1-2, goes over the allowance on 3 -> score 2
+    (1, 7,  '2026-11-01 09:01:05.000', TRUE,  9800, 1),
+    (1, 8,  '2026-11-01 09:01:30.000', TRUE,  8900, 0),
+    (1, 19, '2026-11-01 09:01:55.000', FALSE, 5600, 2),
+    -- play 2: Drift, passes 1-3 losing 2 lives, loses the last 3 on level 4 -> score 3
+    (2, 9,  '2026-11-01 09:07:05.000', TRUE,  9000, 1),
+    (2, 10, '2026-11-01 09:07:25.000', TRUE,  8600, 0),
+    (2, 11, '2026-11-01 09:07:45.000', TRUE,  8100, 1),
+    (2, 12, '2026-11-01 09:08:05.000', FALSE, 6000, 3),
+    -- play 3: tired session, Quick Match, passes 1 and fails 2 -> score 1
+    (3, 7,  '2026-11-02 21:31:05.000', TRUE,  12500, 2),
+    (3, 8,  '2026-11-02 21:31:30.000', FALSE, 4300, 2),
+    -- play 4: Quick Match, passes 1-2, then times out on 3 -> score 2
+    (4, 7,  '2026-11-01 12:11:05.000', TRUE,  8200, 0),
+    (4, 8,  '2026-11-01 12:11:30.000', TRUE,  7700, 1),
+    (4, 19, '2026-11-01 12:11:55.000', FALSE, 6600, 2),
+    -- play 5: Drift in progress, passed level 1 so far -> score 1
+    (5, 9,  '2026-11-03 08:01:05.000', TRUE,  9400, 0);
 
 -- ============================================================================
 -- Simulated players, so the cohort stats queries have enough data to compare.
@@ -181,25 +188,27 @@ SELECT session_id,
 FROM session
 WHERE session_id > 10000 AND MOD(session_id * 7 + session_id DIV 100, 5) <> 0;
 
--- Most sessions play two or three of the four games.
+-- Only the implemented games, Quick Match (3) and Drift (4). Most sessions play
+-- both; the rest play one of them.
 INSERT INTO game_play (play_id, session_id, game_id, started_at, finished_at)
 SELECT se.session_id * 10 + g.game_id,
        se.session_id,
        g.game_id,
-       se.started_at + INTERVAL (g.game_id * 6) MINUTE,
-       se.started_at + INTERVAL (g.game_id * 6 + 5) MINUTE
+       se.started_at + INTERVAL ((g.game_id - 2) * 12) MINUTE,
+       se.started_at + INTERVAL ((g.game_id - 2) * 12 + 10) MINUTE
 FROM session se
-CROSS JOIN game g
+JOIN game g ON g.game_id IN (3, 4)
 WHERE se.session_id > 10000
-  AND MOD(se.session_id + g.game_id * (1 + MOD(se.player_id, 3)), 4) <> 0;
+  AND MOD(se.session_id + g.game_id * (1 + MOD(se.player_id, 3)), 5) <> 0;
 
 -- Each play passes levels 1..score and fails the next one (if there is one).
 -- The score comes from a per-player skill plus education, practice (later
 -- sessions do better), the check-in (sleep, stress, exercise), a decline with
 -- age on the processing-speed game, and some noise.
 --
--- Games 1-3: a level's duration is a fraction of its time limit and its errors
--- come from max_errors (a passed level stays within it, a failed one goes over).
+-- Quick Match (game 3): time_limit is per comparison, so a level's duration is
+-- a fraction of trial_count * time_limit. A passed level stays within
+-- max_errors; a failed one goes over it, which ends the level early.
 --
 -- Drift (game 4) plays differently: a level is 5 rounds, time_limit is per
 -- round, and there is no max_errors, only 5 lives for the whole play.
@@ -238,13 +247,15 @@ levels_played AS (
            l.level_id, l.level_number,
            time_limit.setting_value AS time_limit,
            max_errors.setting_value AS max_errors,
+           trial_count.setting_value AS trial_count,
            l.level_number <= ps.score AS passed,
            IF(ps.game_id = 4 AND l.level_number <= ps.score
-                  AND MOD(ps.play_id * 3 + l.level_number * 7, 3) = 0, 1, 0) AS drift_mistake
+                  AND MOD(ps.play_id DIV 10 + l.level_number * 7, 3) = 0, 1, 0) AS drift_mistake
     FROM play_score ps
     JOIN level l ON l.game_id = ps.game_id AND l.level_number <= ps.score + 1
     JOIN level_setting time_limit ON time_limit.level_id = l.level_id AND time_limit.setting_type_id = 2
     LEFT JOIN level_setting max_errors ON max_errors.level_id = l.level_id AND max_errors.setting_type_id = 4
+    LEFT JOIN level_setting trial_count ON trial_count.level_id = l.level_id AND trial_count.setting_type_id = 5
 ),
 drift_mistakes AS (
     SELECT lp.*,
@@ -269,14 +280,14 @@ SELECT de.play_id,
                           * de.time_limit
                           * LEAST(0.9, 0.4 + 0.4 * (1 - de.skill) + MOD(de.play_id * 7 + de.level_number * 13, 20) / 200))
            WHEN de.passed
-               THEN ROUND(de.time_limit
+               THEN ROUND(de.trial_count * de.time_limit
                           * LEAST(0.95, 0.45 + 0.4 * (1 - de.skill) + MOD(de.play_id * 7 + de.level_number * 13, 20) / 100))
-           WHEN MOD(de.play_id, 2) = 0 THEN de.time_limit  -- ran out of time
-           ELSE ROUND(de.time_limit * 0.8)                -- too many errors
+           -- failed: stopped after 3 to 10 comparisons, answering slowly
+           ELSE ROUND((3 + MOD(de.play_id, 8)) * de.time_limit * 0.8)
        END,
        CASE
            WHEN de.game_id = 4 THEN de.drift_error_count
-           WHEN de.passed THEN MOD(de.play_id + de.level_number, de.max_errors + 1)
+           WHEN de.passed THEN MOD(de.play_id DIV 10 + de.level_number * 5, de.max_errors + 1)
            ELSE de.max_errors + 1 + MOD(de.play_id, 2)
        END
 FROM drift_errors de;
